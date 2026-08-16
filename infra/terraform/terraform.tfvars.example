@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars and fill in. Never commit terraform.tfvars.
+hcloud_token        = "your-hetzner-api-token"
+allowed_admin_ipv4  = ["YOUR.IP.ADDR.HERE/32"]   # curl -4 ifconfig.me
+location            = "fsn1"
+worker_count        = 3

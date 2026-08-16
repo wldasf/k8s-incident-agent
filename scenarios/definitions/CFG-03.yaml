@@ -1,0 +1,91 @@
+id: CFG-03
+name: Readiness probe misconfiguration on shippingservice
+fault_class: configuration_drift
+description: >
+  The readiness probe on shippingservice is pointed at an incorrect port. The
+  container runs correctly but never reports Ready, so the Service removes it
+  from endpoints and callers receive connection failures.
+literature_basis: >
+  Health-check and probe misconfiguration is documented as a distinct fault class affecting container orchestration availability [Zhou21]. It is included because a healthy process is removed from service by its own readiness check, producing an outage with no application-level error.
+
+target:
+  namespace: boutique
+  workload: shippingservice
+  container: server
+
+injection:
+  method: kubectl_patch
+  patch:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: server
+              readinessProbe:
+                tcpSocket:
+                  port: 9999
+                initialDelaySeconds: 5
+                periodSeconds: 10
+  settle_seconds: 90
+
+teardown:
+  method: kubectl_patch
+  patch: {}   # harness restores the recorded pre-injection probe
+
+root_cause_class: misconfigured_env
+ground_truth_explanation: >
+  The readiness probe targets a port on which nothing listens. The process is
+  healthy and serving on its real port, but Kubernetes marks the pod NotReady
+  and withdraws it from the Service endpoints.
+
+predicates:
+  - id: p1
+    description: Pods running but not Ready
+    source: promql
+    expr: 'kube_pod_status_ready{namespace="boutique",condition="false"}'
+    threshold: 0
+    comparison: gt
+    weight: 1.0
+  - id: p2
+    description: Readiness probe failure events
+    source: log_match
+    expr: 'Readiness probe failed'
+    comparison: contains
+    weight: 0.9
+  - id: p3
+    description: Service has zero ready endpoints
+    source: promql
+    expr: 'kube_endpoint_address_available{namespace="boutique",endpoint="shippingservice"}'
+    threshold: 1
+    comparison: lt
+    weight: 0.8
+  - id: p4
+    description: No container restarts (process itself is healthy)
+    source: promql
+    expr: 'increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])'
+    threshold: 1
+    comparison: lt
+    weight: 0.5
+
+reference_fix:
+  action: rollback_deployment
+  params:
+    namespace: boutique
+    workload: shippingservice
+  blast_radius: 1
+  rationale: >
+    Reverting restores the correct probe port. Restarting pods cannot help,
+    since every new pod fails the same misconfigured check.
+
+resolution_check:
+  source: promql
+  expr: 'kube_endpoint_address_available{namespace="boutique",endpoint="shippingservice"}'
+  threshold: 1
+  comparison: gt
+  sustain_seconds: 90
+  timeout_seconds: 900
+
+known_distractors:
+  - "Concluding the application has crashed, when the process is healthy"
+  - "Restarting or scaling, which reproduces the same NotReady state"
+  - "Investigating network policy rather than the probe definition"

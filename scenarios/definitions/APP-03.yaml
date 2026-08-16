@@ -1,0 +1,97 @@
+id: APP-03
+name: Cascading latency from a single slow dependency
+fault_class: application_saturation
+description: >
+  Moderate latency is injected into productcatalogservice, a dependency shared
+  by several services. Delay accumulates along the call path and multiple
+  services alert simultaneously, obscuring the origin.
+literature_basis: >
+  Cascading latency from a shared dependency is a well-documented microservice failure mode in which a single cause produces correlated multi-service alerts [Gan19, Zhou21]. It tests localisation under alert-storm conditions.
+
+target:
+  namespace: boutique
+  workload: productcatalogservice
+
+injection:
+  method: chaos_mesh
+  manifest:
+    apiVersion: chaos-mesh.org/v1alpha1
+    kind: NetworkChaos
+    metadata:
+      name: app-03-cascade
+      namespace: chaos-mesh
+    spec:
+      action: delay
+      mode: all
+      selector:
+        namespaces: ["boutique"]
+        labelSelectors:
+          app: productcatalogservice
+      delay:
+        latency: "1200ms"
+        jitter: "400ms"
+      duration: "20m"
+  settle_seconds: 150
+
+teardown:
+  method: chaos_mesh
+  manifest:
+    delete: true
+    kind: NetworkChaos
+    name: app-03-cascade
+    namespace: chaos-mesh
+
+root_cause_class: cascading_latency
+ground_truth_explanation: >
+  productcatalogservice is shared by frontend, recommendationservice and
+  checkoutservice. Injected latency propagates to all three, producing
+  concurrent alerts. The correct diagnosis identifies the common dependency
+  rather than any individual alerting service.
+
+predicates:
+  - id: p1
+    description: Shared dependency latency elevated
+    source: promql
+    expr: 'histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{namespace="boutique",grpc_service=~".*ProductCatalog.*"}[5m])) by (le))'
+    threshold: 1.0
+    comparison: gt
+    weight: 1.0
+  - id: p2
+    description: Multiple dependent services degraded at once
+    source: promql
+    expr: 'count(histogram_quantile(0.95, sum(rate(grpc_server_handling_seconds_bucket{namespace="boutique"}[5m])) by (le, grpc_service)) > 1)'
+    threshold: 2
+    comparison: gt
+    weight: 0.9
+  - id: p3
+    description: No resource pressure anywhere in the namespace
+    source: promql
+    expr: 'max(rate(container_cpu_cfs_throttled_periods_total{namespace="boutique"}[5m]))'
+    threshold: 0.05
+    comparison: lt
+    weight: 0.7
+
+reference_fix:
+  action: delete_pod
+  params:
+    namespace: boutique
+    workload: productcatalogservice
+  blast_radius: 1
+  rationale: >
+    The injected delay is external to the application, so this scenario
+    principally measures whether the agent localises the shared dependency
+    behind a multi-service alert storm and escalates rather than acting on
+    each alerting service in turn.
+
+resolution_check:
+  source: promql
+  expr: 'histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{namespace="boutique",grpc_service=~".*ProductCatalog.*"}[5m])) by (le))'
+  threshold: 0.3
+  comparison: lt
+  sustain_seconds: 150
+  timeout_seconds: 1500
+
+known_distractors:
+  - "Acting on frontend, recommendationservice or checkoutservice individually"
+  - "Restarting several services in sequence, inflating blast radius"
+  - "Diagnosing a cluster-wide network fault rather than one dependency"

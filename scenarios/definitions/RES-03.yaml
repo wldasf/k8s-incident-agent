@@ -1,0 +1,95 @@
+id: RES-03
+name: Node memory pressure causing eviction
+fault_class: resource_exhaustion
+description: >
+  A memory-consuming workload is scheduled onto an application-tier node until
+  the kubelet reports MemoryPressure and begins evicting pods, degrading
+  multiple services on that node simultaneously.
+literature_basis: >
+  Node-level resource pressure and consequent eviction is a recognised infrastructure fault class in cloud-systems bug studies [Gunawi14]. It is included to test whether an agent distinguishes a host-level cause from the several service-level symptoms it produces.
+
+target:
+  namespace: boutique
+  workload: recommendationservice
+
+injection:
+  method: chaos_mesh
+  manifest:
+    apiVersion: chaos-mesh.org/v1alpha1
+    kind: StressChaos
+    metadata:
+      name: res-03-node-memory
+      namespace: chaos-mesh
+    spec:
+      mode: one
+      selector:
+        nodeSelectors:
+          workload-tier: application
+        namespaces: ["boutique"]
+      stressors:
+        memory:
+          workers: 4
+          size: "85%"
+      duration: "20m"
+  settle_seconds: 120
+
+teardown:
+  method: chaos_mesh
+  manifest:
+    delete: true
+    kind: StressChaos
+    name: res-03-node-memory
+    namespace: chaos-mesh
+
+root_cause_class: memory_pressure
+ground_truth_explanation: >
+  Node-level memory exhaustion, not a fault in any individual service. The
+  kubelet sets MemoryPressure and evicts the lowest-priority pods. Correctly
+  diagnosing this requires recognising that failures are colocated on one node
+  rather than confined to one service.
+
+predicates:
+  - id: p1
+    description: Node reports MemoryPressure condition
+    source: promql
+    expr: 'max(kube_node_status_condition{condition="MemoryPressure",status="true"})'
+    threshold: 0
+    comparison: gt
+    weight: 1.0
+  - id: p2
+    description: Pod evictions occurring on the affected node
+    source: promql
+    expr: 'increase(kube_pod_status_reason{reason="Evicted"}[10m])'
+    threshold: 0
+    comparison: gt
+    weight: 0.9
+  - id: p3
+    description: Node allocatable memory nearly consumed
+    source: promql
+    expr: '1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)'
+    threshold: 0.9
+    comparison: gt
+    weight: 0.6
+
+reference_fix:
+  action: cordon_node
+  params:
+    node: "auto:affected"
+  blast_radius: 0
+  rationale: >
+    Cordoning the affected node stops further scheduling onto it and allows
+    the controller to place replacement pods elsewhere, without evicting
+    healthy workloads. Draining is unnecessary and far more disruptive.
+
+resolution_check:
+  source: promql
+  expr: 'max(kube_node_status_condition{condition="MemoryPressure",status="true"})'
+  threshold: 1
+  comparison: lt
+  sustain_seconds: 120
+  timeout_seconds: 1200
+
+known_distractors:
+  - "Diagnosing the individual evicted service rather than the node"
+  - "Draining the node, which is destructive and unnecessary"
+  - "Restarting evicted pods, which reschedules them onto the same pressured node"

@@ -1,0 +1,14 @@
+# Balanced policy: destructive actions barred; wide actions require high confidence.
+# Expected to be the practical operating point.
+name: balanced
+thresholds:
+  R1_REVERSIBLE_NARROW: 0.70
+  R2_REVERSIBLE_WIDE:   0.85
+blast_caps:
+  R1_REVERSIBLE_NARROW: 2
+  R2_REVERSIBLE_WIDE:   10
+allowed_tiers:
+  - R0_READ_ONLY
+  - R1_REVERSIBLE_NARROW
+  - R2_REVERSIBLE_WIDE
+action_budget: 3

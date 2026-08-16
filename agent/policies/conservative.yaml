@@ -1,0 +1,11 @@
+# Conservative policy: only narrow, self-healing actions, at high confidence.
+# Represents the "maximum caution" end of the experimental sweep.
+name: conservative
+thresholds:
+  R1_REVERSIBLE_NARROW: 0.90
+blast_caps:
+  R1_REVERSIBLE_NARROW: 1
+allowed_tiers:
+  - R0_READ_ONLY
+  - R1_REVERSIBLE_NARROW
+action_budget: 2

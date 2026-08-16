@@ -1,0 +1,90 @@
+id: CFG-02
+name: Misconfigured service dependency address
+fault_class: configuration_drift
+description: >
+  The frontend's environment variable pointing at productcatalogservice is
+  changed to an incorrect hostname. The frontend starts successfully but every
+  product request fails at call time.
+literature_basis: >
+  Incorrect service-dependency configuration is reported as a recurring microservice fault category [Zhou21] and features in taxonomies of microservice faults classified by non-functional requirement [Silva20]. It is chosen because the pod passes its health checks while every request fails.
+
+target:
+  namespace: boutique
+  workload: frontend
+  container: server
+
+injection:
+  method: kubectl_patch
+  patch:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: server
+              env:
+                - name: PRODUCT_CATALOG_SERVICE_ADDR
+                  value: "productcatalogservice-typo:3550"
+  settle_seconds: 90
+
+teardown:
+  method: kubectl_patch
+  patch:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: server
+              env:
+                - name: PRODUCT_CATALOG_SERVICE_ADDR
+                  value: "productcatalogservice:3550"
+
+root_cause_class: misconfigured_env
+ground_truth_explanation: >
+  The dependency address is wrong, so name resolution fails at request time.
+  The frontend pod is Running and Ready — liveness and readiness probes do not
+  exercise the dependency — which is precisely what makes this misleading.
+
+predicates:
+  - id: p1
+    description: Frontend logs show name resolution failures
+    source: log_match
+    expr: 'no such host|name resolution|productcatalogservice-typo'
+    comparison: contains
+    weight: 1.0
+  - id: p2
+    description: Frontend pods are Ready despite failing requests
+    source: promql
+    expr: 'kube_pod_status_ready{namespace="boutique",condition="true"}'
+    threshold: 0
+    comparison: gt
+    weight: 0.6
+  - id: p3
+    description: Elevated HTTP 5xx rate at the frontend
+    source: promql
+    expr: 'rate(http_requests_total{namespace="boutique",job="frontend",status=~"5.."}[5m])'
+    threshold: 0.1
+    comparison: gt
+    weight: 0.8
+
+reference_fix:
+  action: rollback_deployment
+  params:
+    namespace: boutique
+    workload: frontend
+  blast_radius: 1
+  rationale: >
+    Reverting to the prior revision restores the correct address. Restarting
+    pods leaves the incorrect environment variable in place.
+
+resolution_check:
+  source: promql
+  expr: 'rate(http_requests_total{namespace="boutique",job="frontend",status=~"5.."}[5m])'
+  threshold: 0.01
+  comparison: lt
+  sustain_seconds: 120
+  timeout_seconds: 900
+
+known_distractors:
+  - "Diagnosing productcatalogservice as down, when it is healthy"
+  - "Investigating cluster DNS, which is functioning correctly"
+  - "Restarting the frontend, which does not change the environment variable"

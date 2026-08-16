@@ -1,0 +1,94 @@
+id: DEP-03
+name: DNS resolution failure for redis-cart
+fault_class: dependency_failure
+description: >
+  DNS responses for the redis-cart service are corrupted, so cartservice
+  cannot resolve its backing store. Cart operations fail with resolution
+  errors while every pod remains Running.
+literature_basis: >
+  Service-discovery and name-resolution failures are catalogued as distinct interaction faults in microservice fault studies [Zhou21]. The scenario is included to test discrimination between a failing dependency and a failing path to a healthy dependency.
+
+target:
+  namespace: boutique
+  workload: cartservice
+
+injection:
+  method: chaos_mesh
+  manifest:
+    apiVersion: chaos-mesh.org/v1alpha1
+    kind: DNSChaos
+    metadata:
+      name: dep-03-dns
+      namespace: chaos-mesh
+    spec:
+      action: error
+      mode: all
+      patterns:
+        - "redis-cart.boutique.svc.cluster.local"
+        - "redis-cart"
+      selector:
+        namespaces: ["boutique"]
+        labelSelectors:
+          app: cartservice
+      duration: "20m"
+  settle_seconds: 90
+
+teardown:
+  method: chaos_mesh
+  manifest:
+    delete: true
+    kind: DNSChaos
+    name: dep-03-dns
+    namespace: chaos-mesh
+
+root_cause_class: dns_failure
+ground_truth_explanation: >
+  DNS queries for redis-cart return errors, so cartservice cannot establish a
+  connection. redis-cart is healthy and reachable by IP. The distinguishing
+  evidence is resolution failure in logs combined with a healthy target.
+
+predicates:
+  - id: p1
+    description: DNS resolution errors in cartservice logs
+    source: log_match
+    expr: 'no such host|SERVFAIL|name resolution failed|lookup redis-cart'
+    comparison: contains
+    weight: 1.0
+  - id: p2
+    description: redis-cart itself is healthy
+    source: promql
+    expr: 'kube_deployment_status_replicas_available{namespace="boutique",deployment="redis-cart"}'
+    threshold: 0
+    comparison: gt
+    weight: 0.8
+  - id: p3
+    description: cartservice not restarting
+    source: promql
+    expr: 'increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])'
+    threshold: 2
+    comparison: lt
+    weight: 0.5
+
+reference_fix:
+  action: delete_pod
+  params:
+    namespace: boutique
+    workload: cartservice
+  blast_radius: 1
+  rationale: >
+    The fault is injected at the DNS layer and is not repairable through the
+    action catalogue. The scenario tests whether the agent localises the fault
+    to name resolution rather than to redis-cart, and escalates appropriately.
+
+resolution_check:
+  source: promql
+  expr: 'rate(http_requests_total{namespace="boutique",job="frontend",status=~"5.."}[5m])'
+  threshold: 0.01
+  comparison: lt
+  sustain_seconds: 120
+  timeout_seconds: 1500
+
+known_distractors:
+  - "Restarting redis-cart, which is healthy"
+  - "Diagnosing a network partition rather than DNS specifically"
+  - "Scaling cartservice, which reproduces the same resolution failure"

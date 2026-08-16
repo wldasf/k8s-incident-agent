@@ -1,0 +1,17 @@
+# Permissive policy: high automation, minimal restraint.
+# Represents the "maximum autonomy" end of the experimental sweep.
+name: permissive
+thresholds:
+  R1_REVERSIBLE_NARROW: 0.50
+  R2_REVERSIBLE_WIDE:   0.70
+  R3_DESTRUCTIVE:       0.90
+blast_caps:
+  R1_REVERSIBLE_NARROW: 3
+  R2_REVERSIBLE_WIDE:   20
+  R3_DESTRUCTIVE:       20
+allowed_tiers:
+  - R0_READ_ONLY
+  - R1_REVERSIBLE_NARROW
+  - R2_REVERSIBLE_WIDE
+  - R3_DESTRUCTIVE
+action_budget: 5

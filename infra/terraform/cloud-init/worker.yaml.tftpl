@@ -1,0 +1,30 @@
+#cloud-config
+package_update: true
+packages:
+  - curl
+  - open-iscsi
+  - nfs-common
+
+write_files:
+  - path: /etc/sysctl.d/99-k8s.conf
+    content: |
+      net.ipv4.ip_forward = 1
+      net.bridge.bridge-nf-call-iptables = 1
+      fs.inotify.max_user_instances = 8192
+      fs.inotify.max_user_watches = 524288
+
+runcmd:
+  - sysctl --system
+  # Wait for the control plane's API to accept connections before joining.
+  - |
+    until curl -sk https://${server_ip}:6443/livez >/dev/null 2>&1; do sleep 10; done
+  - |
+    curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_VERSION="${k3s_version}" \
+      K3S_URL="https://${server_ip}:6443" \
+      K3S_TOKEN="${k3s_token}" \
+      sh -s - agent \
+        --node-ip ${private_ip} \
+        --flannel-iface ${private_iface} \
+        --node-label workload-tier=${node_label}
+  - touch /var/lib/k3s-ready

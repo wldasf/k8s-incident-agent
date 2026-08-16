@@ -1,0 +1,80 @@
+id: CFG-01
+name: Invalid image tag on checkoutservice
+fault_class: configuration_drift
+description: >
+  checkoutservice is updated to a non-existent image tag. New pods fail to
+  pull the image and remain in ImagePullBackOff while the old ReplicaSet is
+  scaled down, progressively removing capacity.
+literature_basis: >
+  Deployment misconfiguration, including invalid image references, is among the configuration fault categories identified in the industrial microservice fault survey of Zhou et al. [Zhou21] and in the configuration fault class used by AIOpsLab [Chen25].
+
+target:
+  namespace: boutique
+  workload: checkoutservice
+  container: server
+
+injection:
+  method: kubectl_patch
+  patch:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: server
+              image: "gcr.io/google-samples/microservices-demo/checkoutservice:v0.0.0-nonexistent"
+  settle_seconds: 90
+
+teardown:
+  method: kubectl_patch
+  patch: {}   # harness restores the recorded pre-injection image
+
+root_cause_class: bad_image_tag
+ground_truth_explanation: >
+  The deployment references an image tag that does not exist in the registry.
+  The kubelet cannot pull it, so pods never become ready. The correct remedy
+  is to revert the deployment to its previous, working revision.
+
+predicates:
+  - id: p1
+    description: Pods in ImagePullBackOff or ErrImagePull
+    source: k8s_field
+    expr: 'status.containerStatuses[*].state.waiting.reason'
+    comparison: contains
+    weight: 1.0
+  - id: p2
+    description: Failed image pull events recorded
+    source: log_match
+    expr: 'Failed to pull image|ErrImagePull|ImagePullBackOff'
+    comparison: contains
+    weight: 0.9
+  - id: p3
+    description: Deployment has unavailable replicas
+    source: promql
+    expr: 'kube_deployment_status_replicas_unavailable{namespace="boutique",deployment="checkoutservice"}'
+    threshold: 0
+    comparison: gt
+    weight: 0.7
+
+reference_fix:
+  action: rollback_deployment
+  params:
+    namespace: boutique
+    workload: checkoutservice
+  blast_radius: 1
+  rationale: >
+    Rolling back to the previous revision restores the working image
+    directly. Deleting pods achieves nothing, since the deployment spec still
+    references the invalid tag.
+
+resolution_check:
+  source: promql
+  expr: 'kube_deployment_status_replicas_unavailable{namespace="boutique",deployment="checkoutservice"}'
+  threshold: 1
+  comparison: lt
+  sustain_seconds: 90
+  timeout_seconds: 900
+
+known_distractors:
+  - "Deleting the failing pods, which are immediately recreated with the same bad spec"
+  - "Diagnosing a registry outage rather than an invalid tag"
+  - "Scaling the deployment, which creates more unschedulable pods"
