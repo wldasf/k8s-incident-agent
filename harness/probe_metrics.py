@@ -54,6 +54,8 @@ def collect_expressions():
         for p in s.predicates:
             if p.source == "promql":
                 yield s.id, "predicate", p.id, p.expr
+            # http_probe predicates are measured by the harness directly and
+            # are validated by harness/http_probe.py, not by Prometheus.
         if s.resolution_check.source == "promql":
             yield s.id, "resolution", "-", s.resolution_check.expr
 

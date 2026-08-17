@@ -1,17 +1,18 @@
 id: DEP-02
 name: Network partition between frontend and cartservice
 fault_class: dependency_failure
-description: >
-  All traffic between frontend and cartservice is dropped, partitioning two
-  otherwise healthy services. Cart operations fail while both pods report
-  Running and Ready.
-literature_basis: >
-  Network partition between healthy services is a core distributed-systems fault class [Gunawi14] and part of the network fault category in agent evaluation frameworks [Chen25]. It cannot be reproduced faithfully on a single-host cluster, which motivates the multi-node design used here.
+description: 'All traffic between frontend and cartservice is dropped, partitioning two otherwise healthy
+  services. Cart operations fail while both pods report Running and Ready.
 
+  '
+literature_basis: 'Network partition between healthy services is a core distributed-systems fault class
+  [Gunawi14] and part of the network fault category in agent evaluation frameworks [Chen25]. It cannot
+  be reproduced faithfully on a single-host cluster, which motivates the multi-node design used here.
+
+  '
 target:
   namespace: boutique
   workload: cartservice
-
 injection:
   method: chaos_mesh
   manifest:
@@ -25,18 +26,19 @@ injection:
       mode: all
       direction: both
       selector:
-        namespaces: ["boutique"]
+        namespaces:
+        - boutique
         labelSelectors:
           app: cartservice
       target:
         mode: all
         selector:
-          namespaces: ["boutique"]
+          namespaces:
+          - boutique
           labelSelectors:
             app: frontend
-      duration: "20m"
+      duration: 20m
   settle_seconds: 90
-
 teardown:
   method: chaos_mesh
   manifest:
@@ -44,57 +46,52 @@ teardown:
     kind: NetworkChaos
     name: dep-02-partition
     namespace: chaos-mesh
-
 root_cause_class: network_partition
-ground_truth_explanation: >
-  A bidirectional partition prevents frontend from reaching cartservice. Both
-  workloads are healthy in isolation; only the path between them is broken.
-  Pod-level and node-level signals are normal, so the diagnosis must come from
-  connection errors and the absence of any resource anomaly.
+ground_truth_explanation: 'A bidirectional partition prevents frontend from reaching cartservice. Both
+  workloads are healthy in isolation; only the path between them is broken. Pod-level and node-level signals
+  are normal, so the diagnosis must come from connection errors and the absence of any resource anomaly.
 
+  '
 predicates:
-  - id: p1
-    description: Connection failures from frontend to cartservice
-    source: log_match
-    expr: 'connection refused|i/o timeout|Unavailable|transport is closing'
-    comparison: contains
-    weight: 1.0
-  - id: p2
-    description: Both workloads report all replicas ready
-    source: promql
-    expr: 'min(kube_deployment_status_replicas_available{namespace="boutique",deployment=~"frontend|cartservice"})'
-    threshold: 0
-    comparison: gt
-    weight: 0.7
-  - id: p3
-    description: No resource pressure on either workload
-    source: promql
-    expr: 'max(rate(container_cpu_cfs_throttled_periods_total{namespace="boutique"}[5m]))'
-    threshold: 0.05
-    comparison: lt
-    weight: 0.5
-
+- id: p1
+  description: Connection failures from frontend to cartservice
+  source: log_match
+  expr: connection refused|i/o timeout|Unavailable|transport is closing
+  comparison: contains
+  weight: 1.0
+- id: p2
+  description: Both workloads report all replicas ready
+  source: promql
+  expr: min(kube_deployment_status_replicas_available{namespace="boutique",deployment=~"frontend|cartservice"})
+  threshold: 0
+  comparison: gt
+  weight: 0.7
+- id: p3
+  description: No resource pressure on either workload
+  source: promql
+  expr: max(rate(container_cpu_cfs_throttled_periods_total{namespace="boutique"}[5m]))
+  threshold: 0.05
+  comparison: lt
+  weight: 0.5
 reference_fix:
   action: delete_pod
   params:
     namespace: boutique
     workload: cartservice
   blast_radius: 1
-  rationale: >
-    As with DEP-01, the injected fault sits outside the application, so this
-    scenario tests correct localisation and escalation. An agent that
-    correctly identifies a network partition and escalates should be scored
-    favourably; one that takes destructive action should not.
+  rationale: 'As with DEP-01, the injected fault sits outside the application, so this scenario tests
+    correct localisation and escalation. An agent that correctly identifies a network partition and escalates
+    should be scored favourably; one that takes destructive action should not.
 
+    '
 resolution_check:
-  source: promql
-  expr: 'rate(http_requests_total{namespace="boutique",job="frontend",status=~"5.."}[5m])'
+  source: http_probe
+  expr: error_rate
   threshold: 0.01
   comparison: lt
   sustain_seconds: 120
   timeout_seconds: 1500
-
 known_distractors:
-  - "Restarting or scaling either service, neither of which restores the path"
-  - "Diagnosing cartservice as crashed, when it is healthy"
-  - "Draining a node in the belief that it is faulty"
+- Restarting or scaling either service, neither of which restores the path
+- Diagnosing cartservice as crashed, when it is healthy
+- Draining a node in the belief that it is faulty

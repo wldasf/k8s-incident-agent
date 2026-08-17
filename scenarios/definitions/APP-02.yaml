@@ -1,18 +1,20 @@
 id: APP-02
 name: Thread starvation from blocking downstream calls
 fault_class: application_saturation
-description: >
-  Intermittent long delays are injected into a downstream dependency so that
-  request-handling threads block for extended periods. The worker pool is
-  exhausted, new requests are refused or queued, and throughput collapses
-  while resource utilisation stays modest.
-literature_basis: >
-  Thread and worker-pool starvation arising from blocking downstream calls is documented in studies of microservice performance faults [Zhou21] and in analyses of saturation behaviour under dependency latency [Gan19]. It is included because degradation spreads to endpoints with no dependency on the slow service.
+description: 'Intermittent long delays are injected into a downstream dependency so that request-handling
+  threads block for extended periods. The worker pool is exhausted, new requests are refused or queued,
+  and throughput collapses while resource utilisation stays modest.
 
+  '
+literature_basis: 'Thread and worker-pool starvation arising from blocking downstream calls is documented
+  in studies of microservice performance faults [Zhou21] and in analyses of saturation behaviour under
+  dependency latency [Gan19]. It is included because degradation spreads to endpoints with no dependency
+  on the slow service.
+
+  '
 target:
   namespace: boutique
   workload: frontend
-
 injection:
   method: chaos_mesh
   manifest:
@@ -25,16 +27,16 @@ injection:
       action: delay
       mode: all
       selector:
-        namespaces: ["boutique"]
+        namespaces:
+        - boutique
         labelSelectors:
           app: recommendationservice
       delay:
-        latency: "5000ms"
-        jitter: "2000ms"
-        correlation: "25"
-      duration: "20m"
+        latency: 5000ms
+        jitter: 2000ms
+        correlation: '25'
+      duration: 20m
   settle_seconds: 150
-
 teardown:
   method: chaos_mesh
   manifest:
@@ -42,44 +44,42 @@ teardown:
     kind: NetworkChaos
     name: app-02-blocking-calls
     namespace: chaos-mesh
-
 root_cause_class: thread_starvation
-ground_truth_explanation: >
-  Long blocking calls to recommendationservice hold frontend worker threads.
-  As concurrency accumulates the pool is exhausted and the frontend cannot
-  service unrelated requests. The distinguishing evidence is degradation
-  across all frontend endpoints, not only those depending on recommendations.
+ground_truth_explanation: 'Long blocking calls to recommendationservice hold frontend worker threads.
+  As concurrency accumulates the pool is exhausted and the frontend cannot service unrelated requests.
+  The distinguishing evidence is degradation across all frontend endpoints, not only those depending on
+  recommendations.
 
+  '
 predicates:
-  - id: p1
-    description: Frontend latency elevated across all endpoints
-    source: promql
-    expr: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="boutique",job="frontend"}[5m])) by (le))'
-    threshold: 2.0
-    comparison: gt
-    weight: 1.0
-  - id: p2
-    description: Downstream dependency latency very high
-    source: promql
-    expr: 'histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{namespace="boutique",grpc_service=~".*Recommendation.*"}[5m])) by (le))'
-    threshold: 3.0
-    comparison: gt
-    weight: 0.9
-  - id: p3
-    description: Frontend CPU well below its limit
-    source: promql
-    expr: 'max(rate(container_cpu_usage_seconds_total{namespace="boutique",container="server"}[5m]))'
-    threshold: 0.4
-    comparison: lt
-    weight: 0.8
-  - id: p4
-    description: Frontend throughput has collapsed
-    source: promql
-    expr: 'sum(rate(http_requests_total{namespace="boutique",job="frontend"}[5m]))'
-    threshold: 5
-    comparison: lt
-    weight: 0.6
-
+- id: p1
+  description: Frontend p95 latency elevated across all endpoints
+  source: http_probe
+  expr: p95_latency_ms
+  threshold: 2000
+  comparison: gt
+  weight: 1.0
+- id: p2
+  description: p99 latency shows blocking on the slow dependency
+  source: http_probe
+  expr: p99_latency_ms
+  threshold: 5000
+  comparison: gt
+  weight: 0.9
+- id: p3
+  description: Frontend CPU well below its limit
+  source: promql
+  expr: max(rate(container_cpu_usage_seconds_total{namespace="boutique",container="server"}[5m]))
+  threshold: 0.4
+  comparison: lt
+  weight: 0.8
+- id: p4
+  description: Frontend throughput has collapsed
+  source: http_probe
+  expr: requests_per_s
+  threshold: 2.0
+  comparison: lt
+  weight: 0.6
 reference_fix:
   action: scale_workload
   params:
@@ -87,21 +87,19 @@ reference_fix:
     workload: frontend
     replicas: 3
   blast_radius: 2
-  rationale: >
-    Additional frontend replicas restore aggregate worker capacity and
-    recover throughput, which is the standard immediate mitigation. Acting on
-    recommendationservice would be a defensible alternative diagnosis and is
-    scored as correct localisation.
+  rationale: 'Additional frontend replicas restore aggregate worker capacity and recover throughput, which
+    is the standard immediate mitigation. Acting on recommendationservice would be a defensible alternative
+    diagnosis and is scored as correct localisation.
 
+    '
 resolution_check:
-  source: promql
-  expr: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="boutique",job="frontend"}[5m])) by (le))'
-  threshold: 1.0
+  source: http_probe
+  expr: p95_latency_ms
+  threshold: 1000
   comparison: lt
   sustain_seconds: 150
   timeout_seconds: 1500
-
 known_distractors:
-  - "Diagnosing frontend CPU exhaustion, which metrics contradict"
-  - "Restarting the frontend, which re-saturates within minutes"
-  - "Treating this as a network partition, when calls do complete slowly"
+- Diagnosing frontend CPU exhaustion, which metrics contradict
+- Restarting the frontend, which re-saturates within minutes
+- Treating this as a network partition, when calls do complete slowly

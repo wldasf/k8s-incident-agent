@@ -80,11 +80,17 @@ class Predicate(BaseModel):
       k8s_field  - JSONPath-style field on a Kubernetes object
       promql     - PromQL expression compared against `threshold`
       log_match  - regular expression matched against recent container logs
+      http_probe - measured by the harness probing the frontend directly;
+                   expr names a probe statistic (p95_latency_ms, p99_latency_ms,
+                   error_rate, requests_per_s) compared against `threshold`.
+                   Used because Online Boutique does not expose application-
+                   level Prometheus metrics; the harness measures what a user
+                   experiences instead of what the app self-reports.
     """
 
     id: str
     description: str
-    source: Literal["k8s_field", "promql", "log_match"]
+    source: Literal["k8s_field", "promql", "log_match", "http_probe"]
     expr: str
     threshold: float | None = None
     comparison: Literal["gt", "lt", "eq", "contains"] = "gt"
@@ -113,7 +119,7 @@ class ResolutionCheck(BaseModel):
     transient recovery being scored as a fix.
     """
 
-    source: Literal["promql", "http", "k8s_field"]
+    source: Literal["promql", "http_probe", "k8s_field"]
     expr: str
     threshold: float | None = None
     comparison: Literal["gt", "lt", "eq"] = "lt"

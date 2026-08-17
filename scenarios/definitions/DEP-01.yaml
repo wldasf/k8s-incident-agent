@@ -1,17 +1,18 @@
 id: DEP-01
 name: Downstream latency injection into currencyservice
 fault_class: dependency_failure
-description: >
-  A large network delay is injected in front of currencyservice. Callers
-  exceed their request deadlines, and latency propagates upward to the
-  frontend even though no service has crashed.
-literature_basis: >
-  Downstream service timeouts and slow dependencies are among the most frequently reported interaction faults in the industrial microservice survey [Zhou21], and latency injection is a standard dependency-fault primitive in microservice benchmarks [Gan19].
+description: 'A large network delay is injected in front of currencyservice. Callers exceed their request
+  deadlines, and latency propagates upward to the frontend even though no service has crashed.
 
+  '
+literature_basis: 'Downstream service timeouts and slow dependencies are among the most frequently reported
+  interaction faults in the industrial microservice survey [Zhou21], and latency injection is a standard
+  dependency-fault primitive in microservice benchmarks [Gan19].
+
+  '
 target:
   namespace: boutique
   workload: currencyservice
-
 injection:
   method: chaos_mesh
   manifest:
@@ -24,16 +25,16 @@ injection:
       action: delay
       mode: all
       selector:
-        namespaces: ["boutique"]
+        namespaces:
+        - boutique
         labelSelectors:
           app: currencyservice
       delay:
-        latency: "2500ms"
-        jitter: "500ms"
-        correlation: "50"
-      duration: "20m"
+        latency: 2500ms
+        jitter: 500ms
+        correlation: '50'
+      duration: 20m
   settle_seconds: 90
-
 teardown:
   method: chaos_mesh
   manifest:
@@ -41,58 +42,53 @@ teardown:
     kind: NetworkChaos
     name: dep-01-latency
     namespace: chaos-mesh
-
 root_cause_class: downstream_timeout
-ground_truth_explanation: >
-  currencyservice responds far outside caller deadlines. The service is
-  running and its own error rate is low; the fault is in the network path.
-  Correct diagnosis requires tracing the latency to its source rather than
-  acting on the loudest alerting service.
+ground_truth_explanation: 'currencyservice responds far outside caller deadlines. The service is running
+  and its own error rate is low; the fault is in the network path. Correct diagnosis requires tracing
+  the latency to its source rather than acting on the loudest alerting service.
 
+  '
 predicates:
-  - id: p1
-    description: currencyservice p99 latency greatly elevated
-    source: promql
-    expr: 'histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{namespace="boutique",grpc_service=~".*Currency.*"}[5m])) by (le))'
-    threshold: 2.0
-    comparison: gt
-    weight: 1.0
-  - id: p2
-    description: Caller-side deadline-exceeded errors
-    source: log_match
-    expr: 'DeadlineExceeded|context deadline exceeded|timeout'
-    comparison: contains
-    weight: 0.9
-  - id: p3
-    description: currencyservice pods healthy and not restarting
-    source: promql
-    expr: 'increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])'
-    threshold: 1
-    comparison: lt
-    weight: 0.6
-
+- id: p1
+  description: Frontend p99 latency greatly elevated by slow currency dependency
+  source: http_probe
+  expr: p99_latency_ms
+  threshold: 2000
+  comparison: gt
+  weight: 1.0
+- id: p2
+  description: Caller-side deadline-exceeded errors
+  source: log_match
+  expr: DeadlineExceeded|context deadline exceeded|timeout
+  comparison: contains
+  weight: 0.9
+- id: p3
+  description: currencyservice pods healthy and not restarting
+  source: promql
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])
+  threshold: 1
+  comparison: lt
+  weight: 0.6
 reference_fix:
   action: delete_pod
   params:
     namespace: boutique
     workload: currencyservice
   blast_radius: 1
-  rationale: >
-    Under the injected fault the correct operational response is to identify
-    currencyservice as the latency source. Because the fault is external to
-    the application, no in-catalogue action fully resolves it; this scenario
-    principally tests correct localisation and appropriate escalation rather
+  rationale: 'Under the injected fault the correct operational response is to identify currencyservice
+    as the latency source. Because the fault is external to the application, no in-catalogue action fully
+    resolves it; this scenario principally tests correct localisation and appropriate escalation rather
     than autonomous repair.
 
+    '
 resolution_check:
-  source: promql
-  expr: 'histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{namespace="boutique",grpc_service=~".*Currency.*"}[5m])) by (le))'
-  threshold: 0.5
+  source: http_probe
+  expr: p99_latency_ms
+  threshold: 800
   comparison: lt
   sustain_seconds: 120
   timeout_seconds: 1500
-
 known_distractors:
-  - "Restarting the frontend, which merely alerts first"
-  - "Scaling currencyservice, which does not remove injected network delay"
-  - "Diagnosing CPU or memory exhaustion, which metrics do not support"
+- Restarting the frontend, which merely alerts first
+- Scaling currencyservice, which does not remove injected network delay
+- Diagnosing CPU or memory exhaustion, which metrics do not support

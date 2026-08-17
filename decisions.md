@@ -21,4 +21,24 @@ valid enum member — just the wrong one. Added MEMORY_PRESSURE to the
 enum and corrected the scenario. Noted as a limitation of automated
 validation: it checks structure, not meaning.
 
+## 2026-08-16 — Private interface detected, not hardcoded
+Initial cloud-init hardcoded `ens10` as the private-network interface.
+On the provisioned servers it is `enp7s0`, so k3s could not bind flannel
+and no nodes registered despite the API server running. Replaced with
+runtime detection by subnet (10.10.x), with retry and fallback.
+Environment-specific identifiers should be discovered, not assumed.
+
+## 2026-08-17 — Unbounded wait loops hide failure
+Two workers hung 17h in cloud-init because the private interface never
+came up and the join-wait loop had no timeout. A bounded wait that fails
+loudly beats an infinite wait that fails silently — the same principle
+the safety gate's fail-closed design encodes.
+
+## 2026-08-17 — Measure from inside the network, not across the WAN
+First http_probe baseline showed p99 ≈ 2000ms on a healthy system — the
+probe was measuring Jordan→Germany WAN + port-forward overhead, not the
+application. Latency thresholds are meaningless unless measured near the
+system under test. Probe moved to execute on the control plane; the
+harness orchestrates remotely but measures locally.
+
 

@@ -1,18 +1,21 @@
 id: RES-02
 name: CPU throttling in productcatalogservice
 fault_class: resource_exhaustion
-description: >
-  A restrictive CPU limit is applied to productcatalogservice while load
-  continues. The container is throttled by the CFS scheduler, request latency
-  rises sharply, and upstream services begin timing out.
-literature_basis: >
-  CPU throttling under restrictive quota is documented as a latency-inducing resource fault in microservice benchmarking work [Gan19] and is included in resource-exhaustion fault classes used for agent evaluation [Chen25]. It is chosen because the application logs no error, making metric evidence the only reliable signal.
+description: 'A restrictive CPU limit is applied to productcatalogservice while load continues. The container
+  is throttled by the CFS scheduler, request latency rises sharply, and upstream services begin timing
+  out.
 
+  '
+literature_basis: 'CPU throttling under restrictive quota is documented as a latency-inducing resource
+  fault in microservice benchmarking work [Gan19] and is included in resource-exhaustion fault classes
+  used for agent evaluation [Chen25]. It is chosen because the application logs no error, making metric
+  evidence the only reliable signal.
+
+  '
 target:
   namespace: boutique
   workload: productcatalogservice
   container: server
-
 injection:
   method: kubectl_patch
   patch:
@@ -20,12 +23,11 @@ injection:
       template:
         spec:
           containers:
-            - name: server
-              resources:
-                limits:
-                  cpu: "20m"
+          - name: server
+            resources:
+              limits:
+                cpu: 20m
   settle_seconds: 120
-
 teardown:
   method: kubectl_patch
   patch:
@@ -33,62 +35,61 @@ teardown:
       template:
         spec:
           containers:
-            - name: server
-              resources:
-                limits:
-                  cpu: "200m"
-
+          - name: server
+            resources:
+              limits:
+                cpu: 200m
 root_cause_class: cpu_throttling
-ground_truth_explanation: >
-  The CPU limit of 20m is far below demand. The container is throttled for a
-  large fraction of each scheduling period, inflating response time. No error
-  is logged by the application, which makes metrics the only reliable signal.
+ground_truth_explanation: 'The CPU limit of 20m is far below demand. The container is throttled for a
+  large fraction of each scheduling period, inflating response time. No error is logged by the application,
+  which makes metrics the only reliable signal.
 
+  '
 predicates:
-  - id: p1
-    description: High rate of CFS throttled periods
-    source: promql
-    expr: 'rate(container_cpu_cfs_throttled_periods_total{namespace="boutique",container="server"}[5m]) / rate(container_cpu_cfs_periods_total{namespace="boutique",container="server"}[5m])'
-    threshold: 0.25
-    comparison: gt
-    weight: 1.0
-  - id: p2
-    description: CPU usage pinned at the configured limit
-    source: promql
-    expr: 'rate(container_cpu_usage_seconds_total{namespace="boutique",container="server"}[5m]) / on() max(kube_pod_container_resource_limits{namespace="boutique",container="server",resource="cpu"})'
-    threshold: 0.95
-    comparison: gt
-    weight: 0.7
-  - id: p3
-    description: No container restarts (distinguishes throttling from OOM)
-    source: promql
-    expr: 'increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])'
-    threshold: 1
-    comparison: lt
-    weight: 0.5
-
+- id: p1
+  description: High rate of CFS throttled periods
+  source: promql
+  expr: rate(container_cpu_cfs_throttled_periods_total{namespace="boutique",container="server"}[5m]) /
+    rate(container_cpu_cfs_periods_total{namespace="boutique",container="server"}[5m])
+  threshold: 0.25
+  comparison: gt
+  weight: 1.0
+- id: p2
+  description: CPU usage pinned at the configured limit
+  source: promql
+  expr: sum(rate(container_cpu_usage_seconds_total{namespace="boutique",pod=~"productcatalogservice.*"}[5m]))
+    / sum(kube_pod_container_resource_limits{namespace="boutique",pod=~"productcatalogservice.*",resource="cpu"})
+  threshold: 0.95
+  comparison: gt
+  weight: 0.7
+- id: p3
+  description: No container restarts (distinguishes throttling from OOM)
+  source: promql
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])
+  threshold: 1
+  comparison: lt
+  weight: 0.5
 reference_fix:
   action: patch_resource_limits
   params:
     namespace: boutique
     workload: productcatalogservice
     container: server
-    cpu_limit: "200m"
+    cpu_limit: 200m
   blast_radius: 1
-  rationale: >
-    Restoring adequate CPU quota resolves throttling directly. Horizontal
-    scaling would mask the symptom at higher cost while leaving every replica
-    throttled.
+  rationale: 'Restoring adequate CPU quota resolves throttling directly. Horizontal scaling would mask
+    the symptom at higher cost while leaving every replica throttled.
 
+    '
 resolution_check:
   source: promql
-  expr: 'rate(container_cpu_cfs_throttled_periods_total{namespace="boutique",container="server"}[5m]) / rate(container_cpu_cfs_periods_total{namespace="boutique",container="server"}[5m])'
+  expr: rate(container_cpu_cfs_throttled_periods_total{namespace="boutique",container="server"}[5m]) /
+    rate(container_cpu_cfs_periods_total{namespace="boutique",container="server"}[5m])
   threshold: 0.05
   comparison: lt
   sustain_seconds: 120
   timeout_seconds: 900
-
 known_distractors:
-  - "Attributing latency to the frontend rather than the throttled dependency"
-  - "Scaling replicas, which relieves symptoms without correcting the limit"
-  - "Restarting pods, which has no effect on a quota-bound container"
+- Attributing latency to the frontend rather than the throttled dependency
+- Scaling replicas, which relieves symptoms without correcting the limit
+- Restarting pods, which has no effect on a quota-bound container

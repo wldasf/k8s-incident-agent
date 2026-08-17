@@ -11,6 +11,11 @@ terraform init -input=false
 terraform apply -auto-approve
 
 CP_IP="$(terraform output -raw control_plane_ip)"
+# Servers are recreated with new host keys but often reuse IPs; clear stale entries.
+for ip in $(terraform output -json worker_ips | tr -d '[]", ' | tr '\n' ' ') "$CP_IP"; do
+  ssh-keygen -R "$ip" >/dev/null 2>&1 || true
+done
+
 echo "==> Control plane: $CP_IP"
 
 echo "==> Waiting for k3s to finish installing (cloud-init)"

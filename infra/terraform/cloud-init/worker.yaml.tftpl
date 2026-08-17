@@ -15,16 +15,22 @@ write_files:
 
 runcmd:
   - sysctl --system
-  # Wait for the control plane's API to accept connections before joining.
   - |
     until curl -sk https://${server_ip}:6443/livez >/dev/null 2>&1; do sleep 10; done
   - |
+    for i in $(seq 1 30); do
+      IFACE=$(ip -o -4 addr show | awk '$4 ~ /^10\.10\./ {print $2; exit}')
+      if [ -n "$IFACE" ]; then break; fi
+      sleep 2
+    done
+    if [ -z "$IFACE" ]; then IFACE="${private_iface}"; fi
+    echo "using private interface: $IFACE" > /var/log/k3s-iface.log
     curl -sfL https://get.k3s.io | \
       INSTALL_K3S_VERSION="${k3s_version}" \
       K3S_URL="https://${server_ip}:6443" \
       K3S_TOKEN="${k3s_token}" \
       sh -s - agent \
         --node-ip ${private_ip} \
-        --flannel-iface ${private_iface} \
+        --flannel-iface "$IFACE" \
         --node-label workload-tier=${node_label}
   - touch /var/lib/k3s-ready

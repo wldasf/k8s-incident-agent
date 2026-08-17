@@ -1,17 +1,20 @@
 id: APP-01
 name: Connection pool exhaustion under sustained load
 fault_class: application_saturation
-description: >
-  Concurrency against a backing service is driven beyond its connection pool
-  capacity. Requests queue waiting for a free connection, latency rises
-  steeply, and callers begin timing out while CPU and memory remain normal.
-literature_basis: >
-  Connection-pool exhaustion is reported among the resource and interaction faults identified in industrial microservice practice [Zhou21] and is characteristic of saturation faults in which infrastructure metrics remain normal [Gan19]. It is included because this decoupling of symptom from infrastructure signal is the principal diagnostic difficulty.
+description: 'Concurrency against a backing service is driven beyond its connection pool capacity. Requests
+  queue waiting for a free connection, latency rises steeply, and callers begin timing out while CPU and
+  memory remain normal.
 
+  '
+literature_basis: 'Connection-pool exhaustion is reported among the resource and interaction faults identified
+  in industrial microservice practice [Zhou21] and is characteristic of saturation faults in which infrastructure
+  metrics remain normal [Gan19]. It is included because this decoupling of symptom from infrastructure
+  signal is the principal diagnostic difficulty.
+
+  '
 target:
   namespace: boutique
   workload: cartservice
-
 injection:
   method: chaos_mesh
   manifest:
@@ -24,15 +27,15 @@ injection:
       action: delay
       mode: all
       selector:
-        namespaces: ["boutique"]
+        namespaces:
+        - boutique
         labelSelectors:
           app: redis-cart
       delay:
-        latency: "800ms"
-        jitter: "200ms"
-      duration: "20m"
+        latency: 800ms
+        jitter: 200ms
+      duration: 20m
   settle_seconds: 150
-
 teardown:
   method: chaos_mesh
   manifest:
@@ -40,44 +43,41 @@ teardown:
     kind: NetworkChaos
     name: app-01-pool-pressure
     namespace: chaos-mesh
-
 root_cause_class: connection_pool_exhaustion
-ground_truth_explanation: >
-  Slow responses from redis-cart cause each cartservice request to hold its
-  pooled connection far longer than normal. Under steady arrival rate the pool
-  saturates and subsequent requests block on acquisition. The proximate cause
-  is backend latency; the failure mechanism is pool exhaustion. CPU and memory
-  are unremarkable throughout, which is the defining characteristic.
+ground_truth_explanation: 'Slow responses from redis-cart cause each cartservice request to hold its pooled
+  connection far longer than normal. Under steady arrival rate the pool saturates and subsequent requests
+  block on acquisition. The proximate cause is backend latency; the failure mechanism is pool exhaustion.
+  CPU and memory are unremarkable throughout, which is the defining characteristic.
 
+  '
 predicates:
-  - id: p1
-    description: Cart request latency greatly elevated
-    source: promql
-    expr: 'histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{namespace="boutique",grpc_service=~".*Cart.*"}[5m])) by (le))'
-    threshold: 1.0
-    comparison: gt
-    weight: 1.0
-  - id: p2
-    description: CPU utilisation remains low despite the latency
-    source: promql
-    expr: 'max(rate(container_cpu_usage_seconds_total{namespace="boutique",container="server"}[5m]))'
-    threshold: 0.3
-    comparison: lt
-    weight: 0.9
-  - id: p3
-    description: Backing store latency elevated
-    source: promql
-    expr: 'histogram_quantile(0.95, sum(rate(grpc_client_handling_seconds_bucket{namespace="boutique"}[5m])) by (le))'
-    threshold: 0.5
-    comparison: gt
-    weight: 0.8
-  - id: p4
-    description: Pool acquisition or timeout errors in logs
-    source: log_match
-    expr: 'pool|connection timeout|could not acquire|no available connection'
-    comparison: contains
-    weight: 0.7
-
+- id: p1
+  description: Frontend p99 latency elevated while cart requests queue on the pool
+  source: http_probe
+  expr: p99_latency_ms
+  threshold: 1500
+  comparison: gt
+  weight: 1.0
+- id: p2
+  description: CPU utilisation remains low despite the latency
+  source: promql
+  expr: max(rate(container_cpu_usage_seconds_total{namespace="boutique",container="server"}[5m]))
+  threshold: 0.3
+  comparison: lt
+  weight: 0.9
+- id: p3
+  description: Sustained elevated p95 latency at the frontend
+  source: http_probe
+  expr: p95_latency_ms
+  threshold: 800
+  comparison: gt
+  weight: 0.8
+- id: p4
+  description: Pool acquisition or timeout errors in logs
+  source: log_match
+  expr: pool|connection timeout|could not acquire|no available connection
+  comparison: contains
+  weight: 0.7
 reference_fix:
   action: scale_workload
   params:
@@ -85,21 +85,19 @@ reference_fix:
     workload: cartservice
     replicas: 3
   blast_radius: 2
-  rationale: >
-    Adding replicas increases aggregate pool capacity and relieves queueing,
-    which is the standard operational mitigation while the underlying backend
-    latency is investigated. Restarting a pod clears its pool only
-    momentarily before it saturates again.
+  rationale: 'Adding replicas increases aggregate pool capacity and relieves queueing, which is the standard
+    operational mitigation while the underlying backend latency is investigated. Restarting a pod clears
+    its pool only momentarily before it saturates again.
 
+    '
 resolution_check:
-  source: promql
-  expr: 'histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{namespace="boutique",grpc_service=~".*Cart.*"}[5m])) by (le))'
-  threshold: 0.4
+  source: http_probe
+  expr: p99_latency_ms
+  threshold: 600
   comparison: lt
   sustain_seconds: 150
   timeout_seconds: 1500
-
 known_distractors:
-  - "Diagnosing CPU or memory exhaustion, which the metrics contradict"
-  - "Restarting cartservice, which relieves symptoms transiently then recurs"
-  - "Attributing the fault to the frontend, which merely surfaces the latency"
+- Diagnosing CPU or memory exhaustion, which the metrics contradict
+- Restarting cartservice, which relieves symptoms transiently then recurs
+- Attributing the fault to the frontend, which merely surfaces the latency

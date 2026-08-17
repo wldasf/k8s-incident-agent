@@ -16,18 +16,24 @@ write_files:
 
 runcmd:
   - sysctl --system
-  # Install k3s server. Flannel is bound to the private interface so that all
-  # pod and service traffic traverses the Hetzner private network rather than
-  # the public NIC. Traefik and servicelb are disabled: the study installs its
-  # own ingress-free NodePort setup and does not need them.
+  # Detect the private-network interface by the subnet it carries rather than
+  # assuming a fixed name. Hetzner interface names vary by server type and
+  # image, so a hardcoded name is not portable.
   - |
+    for i in $(seq 1 30); do
+      IFACE=$(ip -o -4 addr show | awk '$4 ~ /^10\.10\./ {print $2; exit}')
+      if [ -n "$IFACE" ]; then break; fi
+      sleep 2
+    done
+    if [ -z "$IFACE" ]; then IFACE="${private_iface}"; fi
+    echo "using private interface: $IFACE" > /var/log/k3s-iface.log
     curl -sfL https://get.k3s.io | \
       INSTALL_K3S_VERSION="${k3s_version}" \
       K3S_TOKEN="${k3s_token}" \
       sh -s - server \
         --node-ip ${private_ip} \
         --advertise-address ${private_ip} \
-        --flannel-iface ${private_iface} \
+        --flannel-iface "$IFACE" \
         --disable traefik \
         --disable servicelb \
         --write-kubeconfig-mode 644 \
