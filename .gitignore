@@ -1,0 +1,21 @@
+# Secrets — never commit
+**/terraform.tfvars
+**/kubeconfig.yaml
+*.pem
+.env
+
+# Terraform state (contains sensitive values)
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform/
+**/.terraform.lock.hcl
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Results — keep locally, publish deliberately
+results/
+*.log
