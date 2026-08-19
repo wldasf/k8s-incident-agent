@@ -16,6 +16,20 @@ for d in $(kubectl get deploy -n "$NS" -o name); do
     -p '{"spec":{"template":{"spec":{"nodeSelector":{"workload-tier":"application"}}}}}'
 done
 
+# emailservice is a Python gRPC service that takes longer to become
+# responsive than its default 1s probe timeout allows. The process starts
+# healthy but is killed by its own liveness probe before it can answer,
+# producing a CrashLoopBackOff with no error in the application logs.
+# Relaxing the probe timings is part of provisioning, not a manual repair:
+# the benchmark must be reproducible without hand-patching.
+echo "==> Relaxing emailservice probe timings"
+kubectl patch deploy emailservice -n "$NS" --type=json -p='[
+  {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/timeoutSeconds","value":5},
+  {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/initialDelaySeconds","value":30},
+  {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/timeoutSeconds","value":5},
+  {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/initialDelaySeconds","value":20}
+]'
+
 echo "==> Waiting for rollout"
 kubectl wait --for=condition=available --timeout=15m deployment --all -n "$NS"
 
