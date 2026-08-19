@@ -14,19 +14,62 @@ write_files:
       fs.inotify.max_user_instances = 8192
       fs.inotify.max_user_watches = 524288
 
+  # Static configuration of the Hetzner private network.
+  #
+  # Hetzner's own 50-cloud-init.yaml sets dhcp4: true on the private NIC, so
+  # the address only arrives once Hetzner has finished attaching the network --
+  # asynchronously, and often after cloud-init has already run. That is a race,
+  # and it caused servers to come up with k3s running but no node registered.
+  #
+  # Terraform already knows this server's private address, so we declare it
+  # instead of asking for it. Netplan reads files in lexical order and later
+  # files win, so 60- overrides 50- without editing Hetzner's file (which also
+  # configures public networking -- breaking it would lock us out).
+  #
+  # match en* selects the private NIC (enp7s0) and not the public one (eth0).
+  # Hetzner issues /32 addresses with no local subnet, so reaching other hosts
+  # requires an explicit route via the gateway; on-link tells the kernel to
+  # trust that gateway despite it being outside our /32. MTU 1450 accounts for
+  # encapsulation overhead -- too high and large packets vanish silently.
+  - path: /etc/netplan/60-private-net.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        ethernets:
+          private:
+            match:
+              name: "en*"
+            dhcp4: false
+            addresses: [${private_ip}/32]
+            mtu: 1450
+            routes:
+              - to: 10.10.0.0/16
+                via: 10.10.0.1
+                on-link: true
+
 runcmd:
   - sysctl --system
-  # Detect the private-network interface by the subnet it carries rather than
-  # assuming a fixed name. Hetzner interface names vary by server type and
-  # image, so a hardcoded name is not portable.
+  # Apply the static config, then VERIFY it took effect. Applying and
+  # succeeding are different things: netplan can return before the kernel has
+  # finished. Every failure this week came from assuming a step worked.
   - |
+    netplan apply
     for i in $(seq 1 30); do
-      IFACE=$(ip -o -4 addr show | awk '$4 ~ /^10\.10\./ {print $2; exit}')
-      if [ -n "$IFACE" ]; then break; fi
+      if ip -o -4 addr show | grep -q "${private_ip}"; then
+        echo "$(date -Is) private address ${private_ip} is up" > /var/log/k3s-iface.log
+        break
+      fi
       sleep 2
     done
-    if [ -z "$IFACE" ]; then IFACE="${private_iface}"; fi
-    echo "using private interface: $IFACE" > /var/log/k3s-iface.log
+    if ! ip -o -4 addr show | grep -q "${private_ip}"; then
+      echo "$(date -Is) FATAL: ${private_ip} never appeared after netplan apply" > /var/log/k3s-iface.log
+      ip -brief addr show >> /var/log/k3s-iface.log
+      exit 1
+    fi
+  - |
+    IFACE=$(ip -o -4 addr show | awk '$4 ~ /^10\.10\./ {print $2; exit}')
+    echo "$(date -Is) using interface: $IFACE" >> /var/log/k3s-iface.log
     curl -sfL https://get.k3s.io | \
       INSTALL_K3S_VERSION="${k3s_version}" \
       K3S_TOKEN="${k3s_token}" \

@@ -32,3 +32,6 @@ kubeconfig:
 
 test:
 	@python3 -m pytest tests/ -q
+
+fixip:
+	@bash infra/scripts/allow-my-ip.sh

@@ -41,4 +41,26 @@ application. Latency thresholds are meaningless unless measured near the
 system under test. Probe moved to execute on the control plane; the
 harness orchestrates remotely but measures locally.
 
+## 2026-08-18 — Firewall IP rotation automated
+Public IP rotated twice in three days, each time silently breaking SSH
+and kubectl with connection timeouts. Added `make fixip` to detect the
+current address and update the firewall. Access control tied to a dynamic
+address needs an automated refresh path, not manual edits.
+
+## 2026-08-18 — Provisioning race with Hetzner private networking
+Third occurrence across two sessions: cloud-init runs before Hetzner
+attaches the private network, so interface detection falls back to a
+guessed name and k3s starts but registers no node — a silent failure.
+Replaced with a blocking wait that polls for a 10.10.x address, actively
+reapplies network config, and aborts with a logged error rather than
+proceeding on a guess. Corrects an earlier hypothesis that servers had
+rebooted; uptime was low because they were newly created.
+
+## 2026-08-19 — Race, not failure
+Rebuild showed the private network attaching correctly on its own,
+disproving the earlier conclusion that DHCP was broken. The true fault is
+a race between Hetzner's asynchronous network attachment and cloud-init.
+Intermittent success had been misread as a hard failure. Fix: configure
+the known address statically rather than waiting on a race.
+
 

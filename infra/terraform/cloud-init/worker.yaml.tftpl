@@ -13,18 +13,56 @@ write_files:
       fs.inotify.max_user_instances = 8192
       fs.inotify.max_user_watches = 524288
 
+  # See the control-plane template for the full rationale. In short: Hetzner
+  # configures this NIC via DHCP, which races with cloud-init. Terraform knows
+  # the address, so we declare it statically and override Hetzner's 50- file.
+  - path: /etc/netplan/60-private-net.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        ethernets:
+          private:
+            match:
+              name: "en*"
+            dhcp4: false
+            addresses: [${private_ip}/32]
+            mtu: 1450
+            routes:
+              - to: 10.10.0.0/16
+                via: 10.10.0.1
+                on-link: true
+
 runcmd:
   - sysctl --system
   - |
-    until curl -sk https://${server_ip}:6443/livez >/dev/null 2>&1; do sleep 10; done
-  - |
+    netplan apply
     for i in $(seq 1 30); do
-      IFACE=$(ip -o -4 addr show | awk '$4 ~ /^10\.10\./ {print $2; exit}')
-      if [ -n "$IFACE" ]; then break; fi
+      ip -o -4 addr show | grep -q "${private_ip}" && break
       sleep 2
     done
-    if [ -z "$IFACE" ]; then IFACE="${private_iface}"; fi
-    echo "using private interface: $IFACE" > /var/log/k3s-iface.log
+    if ! ip -o -4 addr show | grep -q "${private_ip}"; then
+      echo "$(date -Is) FATAL: ${private_ip} never appeared" > /var/log/k3s-iface.log
+      ip -brief addr show >> /var/log/k3s-iface.log
+      exit 1
+    fi
+    echo "$(date -Is) private address ${private_ip} is up" > /var/log/k3s-iface.log
+  # Bounded wait for the control plane. Previously infinite, which turned a
+  # dead control plane into a 17-hour silent hang instead of a visible failure.
+  - |
+    JOINED=0
+    for i in $(seq 1 60); do
+      if curl -sk --connect-timeout 5 https://${server_ip}:6443/livez >/dev/null 2>&1; then
+        JOINED=1; break
+      fi
+      sleep 10
+    done
+    if [ "$JOINED" -ne 1 ]; then
+      echo "$(date -Is) FATAL: control plane ${server_ip}:6443 unreachable after 600s" >> /var/log/k3s-iface.log
+      exit 1
+    fi
+    IFACE=$(ip -o -4 addr show | awk '$4 ~ /^10\.10\./ {print $2; exit}')
+    echo "$(date -Is) using interface: $IFACE" >> /var/log/k3s-iface.log
     curl -sfL https://get.k3s.io | \
       INSTALL_K3S_VERSION="${k3s_version}" \
       K3S_URL="https://${server_ip}:6443" \
