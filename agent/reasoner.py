@@ -68,7 +68,7 @@ To give your final answer:
  "root_cause": "<one of: %s>",
  "target": {"namespace": str, "workload": str},
  "proposed_action": "<one of: %s>",
- "params": {...},
+ "params": {"namespace": str, "workload": str, ...any action-specific fields},
  "confidence": <float 0.0-1.0>,
  "justification": "<2-4 sentences citing the evidence you observed>"}
 
@@ -82,6 +82,8 @@ Rules:
 - confidence reflects how strongly the observed evidence supports your
   diagnosis. Do not inflate it.
 - Never propose more than one action.
+- params MUST always include "namespace" and "workload" identifying the
+  resource the action applies to, in addition to any action-specific fields.
 """ % (", ".join(ROOT_CAUSE_VOCABULARY), ", ".join(MUTATING_ACTIONS))
 
 
@@ -161,6 +163,18 @@ def _validate_final(obj: dict) -> str | None:
         return "confidence is not a number"
     if not 0.0 <= c <= 1.0:
         return "confidence must be between 0.0 and 1.0"
+    
+    # namespace and workload must be in params: the safety gate reads only
+    # params when computing blast radius, so a decision lacking them is not
+    # actionable. Rejecting here rather than repairing in the gate keeps the
+    # gate simple and makes malformed decisions a measurable outcome.
+    params = obj.get("params")
+    if not isinstance(params, dict):
+        return "params must be an object containing at least namespace and workload"
+    for k in ("namespace", "workload"):
+        v = params.get(k)
+        if not isinstance(v, str) or not v.strip():
+            return f"params must include a non-empty '{k}'"
     return None
 
 

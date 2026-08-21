@@ -63,4 +63,34 @@ a race between Hetzner's asynchronous network attachment and cloud-init.
 Intermittent success had been misread as a hard failure. Fix: configure
 the known address statically rather than waiting on a race.
 
+## 2026-08-19 — CFG-03 occurred naturally during provisioning
+emailservice entered CrashLoopBackOff with healthy application logs; the
+cause was its own liveness probe timing out at 1s against a slow-starting
+Python gRPC server. This is the exact failure mode of scenario CFG-03
+(probe misconfiguration removing a healthy process from service),
+encountered unintentionally. Supports the claim that the scenario library
+reflects failures that occur in practice. Fix baked into provisioning
+rather than applied by hand, to preserve reproducibility.
+
+## 2026-08-20 — Validation at the boundary, not repair in the gate
+The agent returned namespace and workload in `target` while the gate read
+them from `params`, so blast-radius computation received None and raised.
+The gate returned ESCALATE rather than EXECUTE, confirming the fail-closed
+design works under unhandled error.
+
+Two fixes were possible: have the gate merge `target` into `params`
+(interface repair), or require the fields in `params` and reject final
+answers lacking them (protocol validation). Chose the latter.
+
+Rationale: a safety-critical component should assume nothing and repair
+nothing. Repair in the gate would make its behaviour depend on model output
+format, so every future model quirk becomes a gate change — and the
+component that most needs to be simple and auditable becomes the one
+absorbing malformed input. Validation at the boundary also makes
+"how often can the model produce a well-formed actionable decision?"
+a measurable result rather than something silently patched over.
+
+Accepted cost: this will report more protocol failures than the repair
+approach. That is accurate rather than worse.
+
 
