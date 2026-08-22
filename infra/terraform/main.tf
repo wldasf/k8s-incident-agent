@@ -17,12 +17,19 @@ provider "hcloud" {
 }
 
 locals {
+  # Non-default workspaces get a suffixed name and their own subnet, so
+  # several clusters can run side by side without collision.
+  ws          = terraform.workspace
+  name_prefix = local.ws == "default" ? var.cluster_name : "${var.cluster_name}-${local.ws}"
+  octet       = local.ws == "default" ? 1 : (
+                  local.ws == "shard1" ? 11 : local.ws == "shard2" ? 12 :
+                  local.ws == "shard3" ? 13 : local.ws == "shard4" ? 14 : 20)
   # Hetzner attaches the private network to this interface on Ubuntu images.
   # k3s must bind flannel to it so cluster traffic stays off the public NIC.
   private_iface   = "ens10"
   network_cidr    = "10.10.0.0/16"
-  subnet_cidr     = "10.10.1.0/24"
-  cp_private_ip   = "10.10.1.10"
+  subnet_cidr     = "10.10.${local.octet}.0/24"
+  cp_private_ip   = "10.10.${local.octet}.10"
   worker_ip_start = 20
 }
 
@@ -32,14 +39,14 @@ resource "random_password" "k3s_token" {
 }
 
 resource "hcloud_ssh_key" "admin" {
-  name       = "${var.cluster_name}-admin"
+  name       = "${local.name_prefix}-admin"
   public_key = file(pathexpand(var.ssh_public_key_path))
 }
 
 # --- Networking -------------------------------------------------------------
 
 resource "hcloud_network" "cluster" {
-  name     = "${var.cluster_name}-net"
+  name     = "${local.name_prefix}-net"
   ip_range = local.network_cidr
 }
 
@@ -55,7 +62,7 @@ resource "hcloud_network_subnet" "cluster" {
 # operator's own address. All cluster-internal traffic uses the private network.
 
 resource "hcloud_firewall" "cluster" {
-  name = "${var.cluster_name}-fw"
+  name = "${local.name_prefix}-fw"
 
   rule {
     direction  = "in"
@@ -81,7 +88,7 @@ resource "hcloud_firewall" "cluster" {
 # --- Control plane ----------------------------------------------------------
 
 resource "hcloud_server" "control_plane" {
-  name         = "${var.cluster_name}-cp"
+  name         = "${local.name_prefix}-cp"
   image        = var.image
   server_type  = var.control_plane_type
   location     = var.location
@@ -112,7 +119,7 @@ resource "hcloud_server" "control_plane" {
 
 resource "hcloud_server" "worker" {
   count        = var.worker_count
-  name         = "${var.cluster_name}-w${count.index + 1}"
+  name         = "${local.name_prefix}-w${count.index + 1}"
   image        = var.image
   server_type  = var.worker_type
   location     = var.location
@@ -121,14 +128,14 @@ resource "hcloud_server" "worker" {
 
   network {
     network_id = hcloud_network.cluster.id
-    ip         = "10.10.1.${local.worker_ip_start + count.index}"
+    ip         = "10.10.${local.octet}.${local.worker_ip_start + count.index}"
   }
 
   user_data = templatefile("${path.module}/cloud-init/worker.yaml.tftpl", {
     k3s_version   = var.k3s_version
     k3s_token     = random_password.k3s_token.result
     server_ip     = local.cp_private_ip
-    private_ip    = "10.10.1.${local.worker_ip_start + count.index}"
+    private_ip    = "10.10.${local.octet}.${local.worker_ip_start + count.index}"
     private_iface = local.private_iface
     # Workers are labelled so scenarios can target a tier deterministically.
     node_label    = count.index < 2 ? "application" : "observability"

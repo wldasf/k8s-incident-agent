@@ -22,13 +22,16 @@ Probe statistics exposed to predicates and resolution checks:
 
 from __future__ import annotations
 
+import os
 import statistics
 import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
-DEFAULT_URL = "http://localhost:8080/"
+# Endpoint from the environment: in-cluster measurement avoids both the
+# WAN round trip and the port-forward, which drops under connection churn.
+DEFAULT_URL = os.environ.get("FRONTEND_URL", "http://localhost:8080/")
 DEFAULT_PATHS = ["/", "/product/OLJCESPC7Z", "/cart"]
 
 

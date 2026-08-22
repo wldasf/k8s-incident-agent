@@ -5,8 +5,9 @@ variable "hcloud_token" {
 }
 
 variable "cluster_name" {
-  type    = string
-  default = "incident-agent"
+  type        = string
+  default     = "incident-agent"
+  description = "Base name. The Terraform workspace is appended, so each\nworkspace produces an independent cluster: scenarios cannot be\nparallelised within one cluster (node-stress and partition faults are\ncluster-wide, and the baseline check is namespace-wide), but independent\nclusters remove that coupling."
 }
 
 variable "location" {

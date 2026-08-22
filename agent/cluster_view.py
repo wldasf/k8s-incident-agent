@@ -13,14 +13,18 @@ and replica counts the gate needs for blast-radius calculation.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import urllib.parse
 import urllib.request
 
 
 class ClusterView:
-    def __init__(self, prometheus_url: str = "http://localhost:9090", kubectl: str = "kubectl"):
-        self.prom = prometheus_url.rstrip("/")
+    def __init__(self, prometheus_url: str | None = None, kubectl: str = "kubectl"):
+        # Endpoint comes from the environment so the same code runs
+        # against a local port-forward or an in-cluster service IP.
+        url = prometheus_url or os.environ.get("PROMETHEUS_URL", "http://localhost:9090")
+        self.prom = url.rstrip("/")
         self.kubectl = kubectl
 
     # ---- kubectl (read-only verbs only) ------------------------------------
