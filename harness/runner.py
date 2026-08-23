@@ -55,22 +55,26 @@ POLICY_DIR = pathlib.Path(__file__).resolve().parents[1] / "agent" / "policies"
 RESULTS = pathlib.Path(__file__).resolve().parents[1] / "results"
 
 
-def _check_resolution(scenario, view: ClusterView) -> tuple[bool, float | None]:
+def _check_resolution(scenario, view: ClusterView, smoke: bool = False) -> tuple[bool, float | None]:
     """Poll the scenario's resolution check until it holds continuously for
     sustain_seconds, or the timeout expires. Sustained rather than momentary,
     so a transient recovery is not scored as a fix."""
     rc = scenario.resolution_check
+    # In smoke mode the sustain requirement and timeout are cut hard: the
+    # goal is to reach teardown, not to measure resolution.
+    sustain = rc.sustain_seconds * (0.1 if smoke else SUSTAIN_FACTOR)
+    timeout = 120 if smoke else rc.timeout_seconds
     start = time.monotonic()
     held_since: float | None = None
 
-    while time.monotonic() - start < rc.timeout_seconds:
+    while time.monotonic() - start < timeout:
         if rc.source == "promql":
             from agent.confidence import _promql_scalar
             val = _promql_scalar(view, rc.expr)
             ok = val is not None and (
                 val > rc.threshold if rc.comparison == "gt" else val < rc.threshold)
         elif rc.source == "http_probe":
-            pr = http_probe.probe(duration_s=15)
+            pr = http_probe.probe(duration_s=5 if smoke else 15)
             ok = http_probe.evaluate(rc.expr, rc.threshold, rc.comparison, pr)
         else:
             ok = False
@@ -79,7 +83,7 @@ def _check_resolution(scenario, view: ClusterView) -> tuple[bool, float | None]:
         if ok:
             if held_since is None:
                 held_since = now
-            elif now - held_since >= rc.sustain_seconds * SUSTAIN_FACTOR:
+            elif now - held_since >= sustain:
                 return True, now - start
         else:
             held_since = None
@@ -89,7 +93,7 @@ def _check_resolution(scenario, view: ClusterView) -> tuple[bool, float | None]:
 
 
 def run_once(scenario, policy_name: str, estimator: str, repeat: int,
-             include_e2: bool, model_label: str) -> dict:
+             include_e2: bool, model_label: str, smoke: bool = False) -> dict:
     view = ClusterView()
     client = from_env()
     policy = Policy.from_yaml(str(POLICY_DIR / f"{policy_name}.yaml"))
@@ -100,6 +104,7 @@ def run_once(scenario, policy_name: str, estimator: str, repeat: int,
         "true_root_cause": scenario.root_cause_class.value,
         "policy": policy_name, "estimator": estimator, "repeat": repeat,
         "model": model_label, "started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "smoke": smoke,
     }
 
     ok, detail = wait_for_baseline(ns)
@@ -113,7 +118,9 @@ def run_once(scenario, policy_name: str, estimator: str, repeat: int,
         teardown(scenario, state)
         return record
     record["injected_at"] = time.time()
-    time.sleep(scenario.injection.settle_seconds)
+    # Smoke mode shortens the settle so defects surface quickly. The fault
+    # is still injected and still real; only the waiting is compressed.
+    time.sleep(20 if smoke else scenario.injection.settle_seconds)
 
     try:
         pre_probe = http_probe.probe(duration_s=15)
@@ -154,33 +161,20 @@ def run_once(scenario, policy_name: str, estimator: str, repeat: int,
                        "blast_radius": gate.blast_radius})
 
         executed: list[ExecutedAction] = []
-        action_taken = None
         if gate.decision == Decision.EXECUTE:
             res = execute(decision.proposed_action, decision.params, view=view)
             record["execution_ok"] = res.ok
             record["execution_detail"] = res.detail
             if res.ok:
-                action_taken = decision.proposed_action
+                post_probe = http_probe.probe(duration_s=15)
+                executed.append(ExecutedAction(
+                    name=decision.proposed_action,
+                    blast_radius=gate.blast_radius or 0,
+                    collateral_error_rate=post_probe.error_rate))
 
-        resolved, mttr = _check_resolution(scenario, view)
+        resolved, mttr = _check_resolution(scenario, view, smoke=smoke)
         record["resolved"] = resolved
         record["mttr_seconds"] = round(mttr, 1) if mttr else None
-
-        # Collateral damage is measured only after the system has settled.
-        # Probing immediately after execution captures the rolling restart that
-        # any patch or restart action necessarily causes, which would score
-        # every restart-based remediation as harmful. What matters is whether
-        # unrelated services are still degraded once the action has taken
-        # effect, not whether there was a momentary interruption during it.
-        if action_taken:
-            time.sleep(POST_ACTION_SETTLE_S)
-            post_probe = http_probe.probe(duration_s=20)
-            record["post_action_error_rate"] = post_probe.error_rate
-            record["post_action_p99_ms"] = round(post_probe.p99_latency_ms, 1)
-            executed.append(ExecutedAction(
-                name=action_taken,
-                blast_radius=gate.blast_radius or 0,
-                collateral_error_rate=post_probe.error_rate))
 
         a = assess(executed, resolved, mttr,
                    scenario.reference_fix.action,
@@ -213,6 +207,13 @@ def main() -> int:
     ap.add_argument("--repeats", type=int, default=1)
     ap.add_argument("--no-e2", action="store_true",
                     help="skip self-consistency sampling (saves 5 calls per run)")
+    ap.add_argument("--smoke", action="store_true",
+                    help="fast validation pass: short settle and sustain. "
+                         "Exercises the full loop to surface protocol, executor "
+                         "and teardown defects in ~2 minutes per scenario. "
+                         "MTTR and resolution are NOT valid in this mode and "
+                         "records are marked smoke=true so they cannot be "
+                         "mistaken for experimental data.")
     ap.add_argument("--model-label", default="")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
@@ -250,6 +251,10 @@ def main() -> int:
         if already_done:
             print(f"resuming: {len(already_done)} runs already recorded")
 
+    if args.smoke:
+        print("SMOKE MODE: validation only. MTTR and resolution are not "
+              "meaningful; records are marked smoke=true.\n")
+
     done = 0
     total = len(scenarios) * args.repeats
     for rep in range(1, args.repeats + 1):
@@ -260,7 +265,8 @@ def main() -> int:
                 continue
             print(f"[{done}/{total}] {sc.id} policy={args.policy} est={args.estimator} rep={rep}",
                   flush=True)
-            rec = run_once(sc, args.policy, args.estimator, rep, include_e2, label)
+            rec = run_once(sc, args.policy, args.estimator, rep, include_e2, label,
+                           smoke=args.smoke)
             with out.open("a") as fh:
                 fh.write(json.dumps(rec) + "\n")
             print(f"    -> {rec.get('status')} | gate={rec.get('gate_decision')} "
