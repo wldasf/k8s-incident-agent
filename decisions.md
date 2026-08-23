@@ -148,4 +148,48 @@ measure real token cost (~1,700/run), which is what it was used for.
 Billing enabled before data collection. Cost estimate from measured
 usage: under $2 for the full experiment on Flash pricing.
 
+## 2026-08-23 — Dry-run support is not uniform across kubectl verbs
+The gate's precondition check issues each action with --dry-run=server. An
+executor dry-run test found that `rollout restart` rejects the flag outright,
+causing every restart proposal to escalate on dry_run_failed, and that
+`drain` ignores it and begins evicting pods — a supposedly side-effect-free
+check with real side effects. Both now validate resource existence instead.
+Limitation: the precondition check is weaker for these actions than for
+those supporting server-side dry run, and this asymmetry is a property of
+kubectl rather than of the design.
 
+## 2026-08-23 — Scenario defects found by validation, not by inspection
+Two scenarios were invalid against a live cluster despite passing schema
+validation. CFG-03 added a tcpSocket probe to a service already carrying a
+grpc probe; Kubernetes permits only one handler type and a strategic merge
+adds rather than replaces. RES-02 set a CPU limit of 20m while leaving the
+request at 100m, which Kubernetes rejects. Neither is detectable without
+applying the patch. Reinforces the earlier finding that schema validity does
+not imply semantic correctness.
+
+## 2026-08-23 — Failed runs must not count as completed
+Resumability initially treated any recorded run as done, so a permanently
+failing scenario would be skipped on every retry and the batch would
+silently under-collect. Only runs with status ok are now treated as
+complete. A resume mechanism that cannot distinguish success from failure
+converts a loud failure into a quiet gap in the data.
+
+## 2026-08-23 — Migrated to gemini-3.7-flash
+Gemini 2.5 Flash retires on 16 October 2026, four days after submission —
+no margin if anything slips. 3.7 Flash is generally available with lower
+cost and improved token efficiency. The 3.x line deprecates the temperature
+parameter, which E2 self-consistency depends on, so sampling diversity was
+tested empirically before migrating: five samples of an open-ended prompt
+produced four distinct answers on both 2.5 and 3.7, confirming the models
+remain stochastic. Migration performed before data collection so that no
+results span two models.
+
+## 2026-08-23 — Accepted root causes: strict and lenient accuracy
+The agent consistently labelled RES-01 `resource_limit_misconfig` where
+ground truth said `oom_kill`. Both are correct: one names the mechanism, the
+other the cause. Scoring strictly would report a substantively correct
+diagnosis as an error on a vocabulary technicality. Ten of twelve scenarios
+now declare accepted alternatives with a written rationale; CFG-01 and
+DEP-02 remain strict, having no defensible alternative reading. Every run
+records both exact and accepted correctness, and the gap between the two
+measures how much apparent error is really disagreement over labelling.
