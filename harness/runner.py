@@ -246,8 +246,12 @@ def main() -> int:
         for line in out.read_text().splitlines():
             if line.strip():
                 r = json.loads(line)
-                already_done.add((r.get('scenario'), r.get('policy'),
-                                  r.get('estimator'), r.get('repeat')))
+                # Only completed runs count as done. A failed run must be
+                # retried, or a permanently-failing scenario would be skipped
+                # forever and the batch would silently under-collect.
+                if r.get('status') == 'ok':
+                    already_done.add((r.get('scenario'), r.get('policy'),
+                                      r.get('estimator'), r.get('repeat')))
         if already_done:
             print(f"resuming: {len(already_done)} runs already recorded")
 

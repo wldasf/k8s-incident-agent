@@ -44,7 +44,7 @@ ssh "root@$CP_IP" "cat > /opt/harness/env.sh <<EOF
 export GEMINI_API_KEY='${GEMINI_API_KEY}'
 export ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY:-}'
 export LLM_PROVIDER='${LLM_PROVIDER:-gemini}'
-export LLM_MODEL='${LLM_MODEL:-gemini-2.5-flash}'
+export LLM_MODEL='${LLM_MODEL:-gemini-3.7-flash}'
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 export PATH=/opt/harness-venv/bin:\\\$PATH
 export PROMETHEUS_URL=http://\\\$(kubectl get svc kube-prom-kube-prometheus-prometheus -n observability -o jsonpath='{.spec.clusterIP}'):9090
