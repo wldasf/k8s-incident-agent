@@ -68,15 +68,33 @@ def execute(action: str, params: dict, view=None, dry_run: bool = False) -> Exec
 
     if action == "patch_resource_limits":
         container = params.get("container_name") or params.get("container") or "server"
+        # Models emit resource values in two shapes across runs: flat keys
+        # (memory_limit) and nested Kubernetes-style objects
+        # (limits: {memory: ...}). Both are accepted here because rejecting a
+        # semantically correct decision over formatting would misattribute a
+        # protocol ambiguity to the agent's judgement. The prompt also now
+        # specifies the expected shape, so this is tolerance, not a crutch.
         limits, requests = {}, {}
-        if params.get("memory_limit"):
-            limits["memory"] = params["memory_limit"]
-        if params.get("cpu_limit"):
-            limits["cpu"] = params["cpu_limit"]
-        if params.get("memory_request"):
-            requests["memory"] = params["memory_request"]
-        if params.get("cpu_request"):
-            requests["cpu"] = params["cpu_request"]
+        nested_limits = params.get("limits") if isinstance(params.get("limits"), dict) else {}
+        nested_requests = params.get("requests") if isinstance(params.get("requests"), dict) else {}
+        resources_obj = params.get("resources") if isinstance(params.get("resources"), dict) else {}
+        if resources_obj:
+            nested_limits = nested_limits or resources_obj.get("limits", {})
+            nested_requests = nested_requests or resources_obj.get("requests", {})
+
+        mem_lim = params.get("memory_limit") or nested_limits.get("memory")
+        cpu_lim = params.get("cpu_limit") or nested_limits.get("cpu")
+        mem_req = params.get("memory_request") or nested_requests.get("memory")
+        cpu_req = params.get("cpu_request") or nested_requests.get("cpu")
+
+        if mem_lim:
+            limits["memory"] = mem_lim
+        if cpu_lim:
+            limits["cpu"] = cpu_lim
+        if mem_req:
+            requests["memory"] = mem_req
+        if cpu_req:
+            requests["cpu"] = cpu_req
         if not limits and not requests:
             return ExecResult(False, "no resource values supplied in params", "")
         resources = {}

@@ -13,9 +13,9 @@
 # there is no tunnel to drop, and the laptop can be closed mid-batch.
 set -euo pipefail
 
-TF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../terraform" 2>/dev/null || cd "$(dirname "${BASH_SOURCE[0]}")/infra/terraform"; pwd)"
+PROJECT_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+TF_DIR="$PROJECT_ROOT/infra/terraform"
 CP_IP="$(terraform -chdir="$TF_DIR" output -raw control_plane_ip)"
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.."; pwd)"
 
 : "${GEMINI_API_KEY:?export GEMINI_API_KEY before deploying}"
 
@@ -47,7 +47,7 @@ export LLM_PROVIDER='${LLM_PROVIDER:-gemini}'
 export LLM_MODEL='${LLM_MODEL:-gemini-2.5-flash}'
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 export PATH=/opt/harness-venv/bin:\\\$PATH
-export PROMETHEUS_URL=http://\\\$(kubectl get svc -n observability -l app.kubernetes.io/name=prometheus -o jsonpath='{.items[0].spec.clusterIP}'):9090
+export PROMETHEUS_URL=http://\\\$(kubectl get svc kube-prom-kube-prometheus-prometheus -n observability -o jsonpath='{.spec.clusterIP}'):9090
 export FRONTEND_URL=http://\\\$(kubectl get svc frontend -n boutique -o jsonpath='{.spec.clusterIP}'):80
 EOF
 chmod 600 /opt/harness/env.sh"

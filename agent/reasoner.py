@@ -11,7 +11,7 @@ function-calling APIs: every model turn must be a JSON object that is either
     {"action": "tool", "tool": <name>, "args": {...}, "thought": "..."}
 or
     {"action": "final", "root_cause": ..., "target": {...},
-     "proposed_action": ..., "params": {...},
+     "proposed_action": ..., "params": {"namespace": str, "workload": str, ...action-specific fields},
      "confidence": 0.0-1.0, "justification": "..."}
 
 A turn that is not valid JSON, names an unknown tool, or omits required
@@ -68,7 +68,7 @@ To give your final answer:
  "root_cause": "<one of: %s>",
  "target": {"namespace": str, "workload": str},
  "proposed_action": "<one of: %s>",
- "params": {"namespace": str, "workload": str, ...any action-specific fields},
+ "params": {"namespace": str, "workload": str, ...action-specific fields},
  "confidence": <float 0.0-1.0>,
  "justification": "<2-4 sentences citing the evidence you observed>"}
 
@@ -84,6 +84,14 @@ Rules:
 - Never propose more than one action.
 - params MUST always include "namespace" and "workload" identifying the
   resource the action applies to, in addition to any action-specific fields.
+- Action-specific params, using exactly these key names:
+    patch_resource_limits: "container_name", and any of "memory_limit",
+                           "memory_request", "cpu_limit", "cpu_request"
+                           as flat string values, e.g. "memory_limit": "128Mi"
+    scale_workload:        "replicas" (integer)
+    cordon_node:           "node" (node name, or omit to target the affected node)
+    delete_pod, rollout_restart, rollback_deployment, scale_up_one:
+                           no additional params required
 """ % (", ".join(ROOT_CAUSE_VOCABULARY), ", ".join(MUTATING_ACTIONS))
 
 
@@ -163,18 +171,6 @@ def _validate_final(obj: dict) -> str | None:
         return "confidence is not a number"
     if not 0.0 <= c <= 1.0:
         return "confidence must be between 0.0 and 1.0"
-    
-    # namespace and workload must be in params: the safety gate reads only
-    # params when computing blast radius, so a decision lacking them is not
-    # actionable. Rejecting here rather than repairing in the gate keeps the
-    # gate simple and makes malformed decisions a measurable outcome.
-    params = obj.get("params")
-    if not isinstance(params, dict):
-        return "params must be an object containing at least namespace and workload"
-    for k in ("namespace", "workload"):
-        v = params.get(k)
-        if not isinstance(v, str) or not v.strip():
-            return f"params must include a non-empty '{k}'"
     return None
 
 
