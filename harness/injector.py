@@ -31,15 +31,14 @@ class InjectionState:
     chaos_resources: list[tuple] = field(default_factory=list)  # (kind, name, ns)
 
 
-def _kubectl(args: list[str], stdin: str | None = None,
-             truncate: int | None = 1000) -> tuple[bool, str]:
+def _kubectl(args: list[str], stdin: str | None = None) -> tuple[bool, str]:
     out = subprocess.run(["kubectl", *args], capture_output=True, text=True,
                          input=stdin, timeout=180)
-    text = (out.stdout or out.stderr).strip()
-    return out.returncode == 0, text[:truncate] if truncate else text
+    return out.returncode == 0, (out.stdout or out.stderr).strip()[:1000]
+
 
 def _capture_deployment(ns: str, wl: str) -> dict | None:
-    ok, raw = _kubectl(["get", "deployment", wl, "-n", ns, "-o", "json"], truncate=None)
+    ok, raw = _kubectl(["get", "deployment", wl, "-n", ns, "-o", "json"])
     if not ok:
         return None
     d = json.loads(raw)
@@ -123,7 +122,7 @@ def teardown(scenario, state: InjectionState) -> tuple[bool, str]:
 
     # Uncordon every node: cordon_node is a legal agent action and would
     # otherwise persist across runs.
-    ok, raw = _kubectl(["get", "nodes", "-o", "json"], truncate=None)
+    ok, raw = _kubectl(["get", "nodes", "-o", "json"])
     if ok:
         for node in json.loads(raw).get("items", []):
             if node["spec"].get("unschedulable"):
@@ -141,15 +140,32 @@ def wait_for_baseline(namespace: str = "boutique", timeout_s: int = 600) -> tupl
     deadline = time.monotonic() + timeout_s
     last = "not checked"
     while time.monotonic() < deadline:
-        ok, raw = _kubectl(["get", "deployments", "-n", namespace, "-o", "json"], truncate=None)
+        ok, raw = _kubectl(["get", "deployments", "-n", namespace, "-o", "json"])
         if ok:
             items = json.loads(raw).get("items", [])
             unhealthy = [
                 i["metadata"]["name"] for i in items
                 if i["status"].get("availableReplicas", 0) < i["spec"].get("replicas", 1)
             ]
-            if items and not unhealthy:
+            # A deployment can report an available replica while a second pod
+            # crash-loops, and a pre-existing crash loop went unnoticed for
+            # three days because the replica count alone looked satisfied.
+            # Any pod not Running in the namespace now blocks baseline.
+            pok, praw = _kubectl(["get", "pods", "-n", namespace, "-o", "json"],
+                                 truncate=None)
+            bad_pods: list[str] = []
+            if pok:
+                for pod in json.loads(praw).get("items", []):
+                    phase = pod["status"].get("phase")
+                    waiting = [
+                        c.get("state", {}).get("waiting", {}).get("reason")
+                        for c in pod["status"].get("containerStatuses", [])
+                    ]
+                    if phase != "Running" or "CrashLoopBackOff" in waiting:
+                        bad_pods.append(pod["metadata"]["name"])
+            if items and not unhealthy and not bad_pods:
                 return True, "baseline healthy"
-            last = f"waiting on: {', '.join(unhealthy[:5])}"
+            blockers = unhealthy + [f"pod:{p}" for p in bad_pods]
+            last = f"waiting on: {', '.join(blockers[:5])}"
         time.sleep(10)
     return False, f"baseline not reached within {timeout_s}s ({last})"

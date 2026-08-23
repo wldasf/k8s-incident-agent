@@ -58,7 +58,13 @@ def execute(action: str, params: dict, view=None, dry_run: bool = False) -> Exec
                          f"--replicas={replicas}"], dry_run)
 
     if action == "rollout_restart":
-        return _kubectl(["rollout", "restart", f"deployment/{wl}", "-n", ns], dry_run)
+        # kubectl rollout restart does not accept --dry-run. Validate that the
+        # target deployment exists instead: a missing deployment is the failure
+        # the gate's precondition check needs to catch, and passing an
+        # unsupported flag would make every restart proposal escalate.
+        if dry_run:
+            return _kubectl(["get", "deployment", wl, "-n", ns], dry_run=False)
+        return _kubectl(["rollout", "restart", f"deployment/{wl}", "-n", ns])
 
     if action == "rollback_deployment":
         # --dry-run is not supported by rollout undo; validate existence instead.
@@ -131,8 +137,14 @@ def execute(action: str, params: dict, view=None, dry_run: bool = False) -> Exec
             node = pods[0]["node"] if pods else ""
         if not node:
             return ExecResult(False, "could not resolve target node", "")
+        if dry_run:
+            # kubectl drain does not honour --dry-run in the way the other
+            # verbs do: it cordons and begins evicting. Validating the node
+            # exists is therefore the only side-effect-free precondition check
+            # available for this action.
+            return _kubectl(["get", "node", node], dry_run=False)
         return _kubectl(["drain", node, "--ignore-daemonsets",
-                         "--delete-emptydir-data", "--force", "--timeout=60s"], dry_run)
+                         "--delete-emptydir-data", "--force", "--timeout=60s"])
 
     if action == "delete_pvc":
         pvc = params.get("pvc", "")

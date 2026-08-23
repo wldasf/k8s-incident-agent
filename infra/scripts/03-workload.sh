@@ -22,13 +22,8 @@ done
 # producing a CrashLoopBackOff with no error in the application logs.
 # Relaxing the probe timings is part of provisioning, not a manual repair:
 # the benchmark must be reproducible without hand-patching.
-echo "==> Relaxing emailservice probe timings"
-kubectl patch deploy emailservice -n "$NS" --type=json -p='[
-  {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/timeoutSeconds","value":5},
-  {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/initialDelaySeconds","value":30},
-  {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/timeoutSeconds","value":5},
-  {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/initialDelaySeconds","value":20}
-]'
+echo "==> Relaxing namespace probe timings"
+bash "$(dirname "${BASH_SOURCE[0]}")/probe-fix.sh" "$NS"
 
 echo "==> Waiting for rollout"
 kubectl wait --for=condition=available --timeout=15m deployment --all -n "$NS"
