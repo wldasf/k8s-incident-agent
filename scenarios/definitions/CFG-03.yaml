@@ -24,10 +24,12 @@ injection:
           containers:
           - name: server
             readinessProbe:
-              tcpSocket:
+              grpc:
                 port: 9999
               initialDelaySeconds: 5
               periodSeconds: 10
+              timeoutSeconds: 1
+              failureThreshold: 3
   settle_seconds: 90
 teardown:
   method: kubectl_patch

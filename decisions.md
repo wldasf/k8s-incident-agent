@@ -140,4 +140,12 @@ evicting. Both now validate resource existence instead. Note for
 limitations: the gate's precondition check is weaker for these actions
 than for those supporting server-side dry run.
 
+## 2026-08-23 — Free tier sized for validation, not experimentation
+Gemini free tier caps at 20 requests/day. With E2 self-consistency
+sampling at 6 calls per run, that is ~3 runs/day against an experimental
+design needing 216. The free tier was adequate to prove the pipeline and
+measure real token cost (~1,700/run), which is what it was used for.
+Billing enabled before data collection. Cost estimate from measured
+usage: under $2 for the full experiment on Flash pricing.
+
 
