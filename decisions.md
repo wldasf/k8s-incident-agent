@@ -101,4 +101,43 @@ would have been mislabelled. Probe moved to after resolution is confirmed,
 with a settling delay. Distinguishes momentary interruption during an action
 from persistent degradation caused by it.
 
+## 2026-08-22 — Harness moved into the cluster
+Running from a laptop placed a WAN link and two port-forwards on the
+critical path of every measurement. Tunnels dropped under the probe's
+connection churn, and a dropped Prometheus tunnel returned "no series",
+which the harness read as evidence absent rather than measurement failed.
+Latency was also distorted: healthy p99 measured 2000ms from Jordan,
+60ms in-cluster. Measurement must sit near the system under test.
+
+## 2026-08-22 — Parallel clusters, not parallel scenarios
+Scenarios cannot share a cluster: node-stress and partition faults are
+cluster-wide and the baseline check is namespace-wide. Terraform
+workspaces give four independent clusters instead, ~4x throughput for
+about EUR 0.20/hour.
+
+## 2026-08-23 — Smoke mode added after repeated slow bug discovery
+Six defects had each cost ~15 minutes to surface via full runs. Added a
+compressed validation mode and a one-second executor dry-run test. The
+first smoke pass found four further defects in twenty minutes, one of
+which would have aborted an overnight batch at run 2.
+
+## 2026-08-23 — Probe timings patched namespace-wide
+Online Boutique ships probes with timeoutSeconds 1 and no initial delay.
+Python gRPC services calling dependencies at startup are killed before
+becoming ready (exit 137) with healthy application logs. Patched per
+service on emailservice; recurred on recommendationservice, undetected
+for three days. Per-service patching was the wrong granularity.
+
+## 2026-08-23 — Baseline check strengthened
+wait_for_baseline tested availableReplicas only, so a crash-looping pod
+alongside an available one passed. Now also rejects any pod not Running
+or in CrashLoopBackOff. A weak health check silently degraded the
+test-bed for three days.
+
+## 2026-08-23 — Dry-run support is not uniform across kubectl verbs
+rollout restart rejects --dry-run outright; drain ignores it and begins
+evicting. Both now validate resource existence instead. Note for
+limitations: the gate's precondition check is weaker for these actions
+than for those supporting server-side dry run.
+
 

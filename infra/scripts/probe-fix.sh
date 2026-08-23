@@ -41,6 +41,9 @@ done
 echo "==> Waiting for rollout"
 kubectl wait --for=condition=available --timeout=10m deployment --all -n "$NS"
 
+echo "==> Allowing pods to settle"
+sleep 30
+
 echo "==> Confirming no pod is crash-looping"
 bad=$(kubectl get pods -n "$NS" --no-headers | grep -v " Running " || true)
 if [ -n "$bad" ]; then
