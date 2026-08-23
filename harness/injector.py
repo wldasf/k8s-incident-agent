@@ -30,15 +30,20 @@ class InjectionState:
     saved_spec: dict | None = None          # pre-injection deployment spec
     chaos_resources: list[tuple] = field(default_factory=list)  # (kind, name, ns)
 
-
-def _kubectl(args: list[str], stdin: str | None = None) -> tuple[bool, str]:
+def _kubectl(args: list[str], stdin: str | None = None,
+             truncate: int | None = 1000) -> tuple[bool, str]:
+    # Output is truncated by default because most callers want a short error
+    # message. Callers that parse JSON must pass truncate=None: a JSON
+    # document cut at 1000 characters fails to parse, and the resulting error
+    # points at the parser rather than at the truncation.
     out = subprocess.run(["kubectl", *args], capture_output=True, text=True,
                          input=stdin, timeout=180)
-    return out.returncode == 0, (out.stdout or out.stderr).strip()[:1000]
+    text = (out.stdout or out.stderr).strip()
+    return out.returncode == 0, text[:truncate] if truncate else text
 
 
 def _capture_deployment(ns: str, wl: str) -> dict | None:
-    ok, raw = _kubectl(["get", "deployment", wl, "-n", ns, "-o", "json"])
+    ok, raw = _kubectl(["get", "deployment", wl, "-n", ns, "-o", "json"], truncate=None)
     if not ok:
         return None
     d = json.loads(raw)
@@ -122,7 +127,7 @@ def teardown(scenario, state: InjectionState) -> tuple[bool, str]:
 
     # Uncordon every node: cordon_node is a legal agent action and would
     # otherwise persist across runs.
-    ok, raw = _kubectl(["get", "nodes", "-o", "json"])
+    ok, raw = _kubectl(["get", "nodes", "-o", "json"], truncate=None)
     if ok:
         for node in json.loads(raw).get("items", []):
             if node["spec"].get("unschedulable"):
@@ -140,7 +145,7 @@ def wait_for_baseline(namespace: str = "boutique", timeout_s: int = 600) -> tupl
     deadline = time.monotonic() + timeout_s
     last = "not checked"
     while time.monotonic() < deadline:
-        ok, raw = _kubectl(["get", "deployments", "-n", namespace, "-o", "json"])
+        ok, raw = _kubectl(["get", "deployments", "-n", namespace, "-o", "json"], truncate=None)
         if ok:
             items = json.loads(raw).get("items", [])
             unhealthy = [
