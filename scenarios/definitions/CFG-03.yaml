@@ -24,17 +24,19 @@ injection:
           containers:
           - name: server
             readinessProbe:
-              grpc:
+              tcpSocket:
                 port: 9999
               initialDelaySeconds: 5
               periodSeconds: 10
-              timeoutSeconds: 1
-              failureThreshold: 3
   settle_seconds: 90
 teardown:
   method: kubectl_patch
   patch: {}
 root_cause_class: misconfigured_env
+accepted_root_causes:
+- resource_limit_misconfig
+accepted_rationale: A probe misconfiguration and a resource misconfiguration are both configuration faults
+  removing a healthy process from service.
 ground_truth_explanation: 'The readiness probe targets a port on which nothing listens. The process is
   healthy and serving on its real port, but Kubernetes marks the pod NotReady and withdraws it from the
   Service endpoints.

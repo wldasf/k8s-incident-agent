@@ -45,6 +45,11 @@ teardown:
     name: app-02-blocking-calls
     namespace: chaos-mesh
 root_cause_class: thread_starvation
+accepted_root_causes:
+- downstream_timeout
+- cascading_latency
+accepted_rationale: Thread starvation is induced by blocking downstream calls; both alternatives name
+  the same causal chain.
 ground_truth_explanation: 'Long blocking calls to recommendationservice hold frontend worker threads.
   As concurrency accumulates the pool is exhausted and the frontend cannot service unrelated requests.
   The distinguishing evidence is degradation across all frontend endpoints, not only those depending on

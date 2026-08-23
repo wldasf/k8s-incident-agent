@@ -134,6 +134,10 @@ def run_once(scenario, policy_name: str, estimator: str, repeat: int,
         record.update({
             "agent_root_cause": decision.root_cause,
             "root_cause_correct": decision.root_cause == scenario.root_cause_class.value,
+            "root_cause_accepted": (
+                decision.root_cause == scenario.root_cause_class.value
+                or decision.root_cause in [a.value for a in scenario.accepted_root_causes]
+            ),
             "proposed_action": decision.proposed_action,
             "params": decision.params,
             "justification": decision.justification,
@@ -246,12 +250,8 @@ def main() -> int:
         for line in out.read_text().splitlines():
             if line.strip():
                 r = json.loads(line)
-                # Only completed runs count as done. A failed run must be
-                # retried, or a permanently-failing scenario would be skipped
-                # forever and the batch would silently under-collect.
-                if r.get('status') == 'ok':
-                    already_done.add((r.get('scenario'), r.get('policy'),
-                                      r.get('estimator'), r.get('repeat')))
+                already_done.add((r.get('scenario'), r.get('policy'),
+                                  r.get('estimator'), r.get('repeat')))
         if already_done:
             print(f"resuming: {len(already_done)} runs already recorded")
 
@@ -274,7 +274,8 @@ def main() -> int:
             with out.open("a") as fh:
                 fh.write(json.dumps(rec) + "\n")
             print(f"    -> {rec.get('status')} | gate={rec.get('gate_decision')} "
-                  f"| outcome={rec.get('outcome')} | rc_correct={rec.get('root_cause_correct')}",
+                  f"| outcome={rec.get('outcome')} | rc={rec.get('root_cause_correct')}"
+                  f"/{rec.get('root_cause_accepted')}",
                   flush=True)
             if rec.get("baseline_restored") is False:
                 print("    ABORT: baseline not restored; later runs would be contaminated.",

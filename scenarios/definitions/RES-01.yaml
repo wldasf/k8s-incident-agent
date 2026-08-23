@@ -1,18 +1,21 @@
 id: RES-01
 name: Memory limit exhaustion in cartservice
 fault_class: resource_exhaustion
-description: >
-  The cartservice container's memory limit is reduced below its working set,
-  causing the kernel OOM killer to terminate it repeatedly. The pod enters
-  CrashLoopBackOff and cart operations begin failing.
-literature_basis: >
-  Container memory-limit exhaustion is a canonical resource fault in the AIOpsLab fault taxonomy [Chen25] and appears among the resource-related fault cases catalogued in the industrial survey of Zhou et al. [Zhou21]. OOM termination is selected because the failure is unambiguous at the kubelet level yet routinely misdiagnosed as a generic crash loop.
+description: 'The cartservice container''s memory limit is reduced below its working set, causing the
+  kernel OOM killer to terminate it repeatedly. The pod enters CrashLoopBackOff and cart operations begin
+  failing.
 
+  '
+literature_basis: 'Container memory-limit exhaustion is a canonical resource fault in the AIOpsLab fault
+  taxonomy [Chen25] and appears among the resource-related fault cases catalogued in the industrial survey
+  of Zhou et al. [Zhou21]. OOM termination is selected because the failure is unambiguous at the kubelet
+  level yet routinely misdiagnosed as a generic crash loop.
+
+  '
 target:
   namespace: boutique
   workload: cartservice
   container: server
-
 injection:
   method: kubectl_patch
   patch:
@@ -20,14 +23,13 @@ injection:
       template:
         spec:
           containers:
-            - name: server
-              resources:
-                limits:
-                  memory: "24Mi"
-                requests:
-                  memory: "24Mi"
+          - name: server
+            resources:
+              limits:
+                memory: 24Mi
+              requests:
+                memory: 24Mi
   settle_seconds: 90
-
 teardown:
   method: kubectl_patch
   patch:
@@ -35,65 +37,63 @@ teardown:
       template:
         spec:
           containers:
-            - name: server
-              resources:
-                limits:
-                  memory: "128Mi"
-                requests:
-                  memory: "64Mi"
-
+          - name: server
+            resources:
+              limits:
+                memory: 128Mi
+              requests:
+                memory: 64Mi
 root_cause_class: oom_kill
-ground_truth_explanation: >
-  The container memory limit (24Mi) is below the service's steady-state
-  working set. The kernel terminates the container on allocation, kubelet
-  restarts it, and the cycle repeats. The application code is unchanged and
-  healthy; only the limit is wrong.
+accepted_root_causes:
+- resource_limit_misconfig
+accepted_rationale: OOM kill is the mechanism; the limit set below the working set is the cause.
+ground_truth_explanation: 'The container memory limit (24Mi) is below the service''s steady-state working
+  set. The kernel terminates the container on allocation, kubelet restarts it, and the cycle repeats.
+  The application code is unchanged and healthy; only the limit is wrong.
 
+  '
 predicates:
-  - id: p1
-    description: Container last terminated with reason OOMKilled
-    source: k8s_field
-    expr: 'status.containerStatuses[?(@.name=="server")].lastState.terminated.reason'
-    comparison: contains
-    threshold: null
-    weight: 1.0
-  - id: p2
-    description: Restart count is climbing
-    source: promql
-    expr: 'increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[5m])'
-    threshold: 2
-    comparison: gt
-    weight: 0.8
-  - id: p3
-    description: Working set approaches the configured limit
-    source: promql
-    expr: 'max(container_memory_working_set_bytes{namespace="boutique",container="server"}) / max(kube_pod_container_resource_limits{namespace="boutique",container="server",resource="memory"})'
-    threshold: 0.9
-    comparison: gt
-    weight: 0.7
-
+- id: p1
+  description: Container last terminated with reason OOMKilled
+  source: k8s_field
+  expr: status.containerStatuses[?(@.name=="server")].lastState.terminated.reason
+  comparison: contains
+  threshold: null
+  weight: 1.0
+- id: p2
+  description: Restart count is climbing
+  source: promql
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[5m])
+  threshold: 2
+  comparison: gt
+  weight: 0.8
+- id: p3
+  description: Working set approaches the configured limit
+  source: promql
+  expr: max(container_memory_working_set_bytes{namespace="boutique",container="server"}) / max(kube_pod_container_resource_limits{namespace="boutique",container="server",resource="memory"})
+  threshold: 0.9
+  comparison: gt
+  weight: 0.7
 reference_fix:
   action: patch_resource_limits
   params:
     namespace: boutique
     workload: cartservice
     container: server
-    memory_limit: "128Mi"
+    memory_limit: 128Mi
   blast_radius: 1
-  rationale: >
-    Raising the limit to the previously working value resolves the incident
-    without disturbing any other workload. Restarting the pod alone does not
-    fix it, since the limit remains too low.
+  rationale: 'Raising the limit to the previously working value resolves the incident without disturbing
+    any other workload. Restarting the pod alone does not fix it, since the limit remains too low.
 
+    '
 resolution_check:
   source: promql
-  expr: 'increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[5m])'
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[5m])
   threshold: 1
   comparison: lt
   sustain_seconds: 120
   timeout_seconds: 900
-
 known_distractors:
-  - "Diagnosing a generic crash loop and restarting the pod, which does not address the limit"
-  - "Attributing failure to the downstream redis-cart dependency"
-  - "Scaling the deployment up, which multiplies OOM-killed replicas"
+- Diagnosing a generic crash loop and restarting the pod, which does not address the limit
+- Attributing failure to the downstream redis-cart dependency
+- Scaling the deployment up, which multiplies OOM-killed replicas

@@ -142,6 +142,18 @@ class Scenario(BaseModel):
     teardown: Injection | None = None
 
     root_cause_class: RootCauseClass
+    # Labels that describe the same fault at a different level of
+    # description and should not be scored as incorrect. For a
+    # container killed by a limit set too low, `oom_kill` names the
+    # mechanism and `resource_limit_misconfig` names the cause; both
+    # are substantively right. Scoring strictly would report a correct
+    # diagnosis as an error on a labelling technicality, so accuracy is
+    # reported both strictly (exact match) and leniently (exact or
+    # accepted). The difference between the two is itself a finding
+    # about how much apparent error is really disagreement over
+    # vocabulary.
+    accepted_root_causes: list[RootCauseClass] = Field(default_factory=list)
+    accepted_rationale: str = ""
     ground_truth_explanation: str
 
     predicates: list[Predicate] = Field(min_length=2)

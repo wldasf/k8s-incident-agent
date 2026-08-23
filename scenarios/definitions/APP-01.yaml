@@ -44,6 +44,10 @@ teardown:
     name: app-01-pool-pressure
     namespace: chaos-mesh
 root_cause_class: connection_pool_exhaustion
+accepted_root_causes:
+- downstream_timeout
+accepted_rationale: Pool exhaustion here is caused by backend latency; naming the proximate cause rather
+  than the mechanism is defensible.
 ground_truth_explanation: 'Slow responses from redis-cart cause each cartservice request to hold its pooled
   connection far longer than normal. Under steady arrival rate the pool saturates and subsequent requests
   block on acquisition. The proximate cause is backend latency; the failure mechanism is pool exhaustion.

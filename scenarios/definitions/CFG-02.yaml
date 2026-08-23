@@ -38,6 +38,10 @@ teardown:
             - name: PRODUCT_CATALOG_SERVICE_ADDR
               value: productcatalogservice:3550
 root_cause_class: misconfigured_env
+accepted_root_causes:
+- dns_failure
+accepted_rationale: The incorrect address manifests as name resolution failure, so DNS is a defensible
+  reading of the same evidence.
 ground_truth_explanation: 'The dependency address is wrong, so name resolution fails at request time.
   The frontend pod is Running and Ready — liveness and readiness probes do not exercise the dependency
   — which is precisely what makes this misleading.

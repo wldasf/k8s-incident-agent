@@ -26,11 +26,8 @@ injection:
           - name: server
             resources:
               limits:
-                cpu: 50m
-              requests:
                 cpu: 20m
   settle_seconds: 120
-
 teardown:
   method: kubectl_patch
   patch:
@@ -42,9 +39,10 @@ teardown:
             resources:
               limits:
                 cpu: 200m
-              requests:
-                cpu: 100m
 root_cause_class: cpu_throttling
+accepted_root_causes:
+- resource_limit_misconfig
+accepted_rationale: CPU throttling is the mechanism; the limit set below demand is the cause.
 ground_truth_explanation: 'The CPU limit of 20m is far below demand. The container is throttled for a
   large fraction of each scheduling period, inflating response time. No error is logged by the application,
   which makes metrics the only reliable signal.

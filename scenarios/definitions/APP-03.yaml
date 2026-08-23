@@ -43,6 +43,10 @@ teardown:
     name: app-03-cascade
     namespace: chaos-mesh
 root_cause_class: cascading_latency
+accepted_root_causes:
+- downstream_timeout
+accepted_rationale: Cascading latency from a shared dependency is a downstream timeout observed at multiple
+  callers.
 ground_truth_explanation: 'productcatalogservice is shared by frontend, recommendationservice and checkoutservice.
   Injected latency propagates to all three, producing concurrent alerts. The correct diagnosis identifies
   the common dependency rather than any individual alerting service.

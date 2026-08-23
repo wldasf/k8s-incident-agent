@@ -43,6 +43,10 @@ teardown:
     name: dep-01-latency
     namespace: chaos-mesh
 root_cause_class: downstream_timeout
+accepted_root_causes:
+- cascading_latency
+accepted_rationale: A slow dependency propagating upward is describable either as a downstream timeout
+  or as cascading latency.
 ground_truth_explanation: 'currencyservice responds far outside caller deadlines. The service is running
   and its own error rate is low; the fault is in the network path. Correct diagnosis requires tracing
   the latency to its source rather than acting on the loudest alerting service.
