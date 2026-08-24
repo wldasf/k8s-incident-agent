@@ -7,10 +7,12 @@ a namespace and workload, never a scenario id, so the agent cannot shortcut
 diagnosis by recognising the experiment.
 """
 
+
 from __future__ import annotations
 
 from .cluster_view import ClusterView
 
+import re
 
 def build_context(view: ClusterView, namespace: str, workload: str) -> str:
     pods = view.pods_for_workload(namespace, workload)
@@ -21,7 +23,7 @@ def build_context(view: ClusterView, namespace: str, workload: str) -> str:
         for p in pods
     ) or "  (no pods found)"
 
-    return f"""An alert has fired for workload '{workload}' in namespace '{namespace}'.
+    context = f"""An alert has fired for workload '{workload}' in namespace '{namespace}'.
 
 POD STATUS:
 {pod_lines}
@@ -34,3 +36,11 @@ RECENT EVENTS (namespace, oldest first):
 
 You may use diagnostic tools to gather more evidence (logs, metrics,
 rollout history) before giving your final answer."""
+
+    # Fail loudly rather than silently producing corrupted data: a leak of the
+    # injection framework into agent-visible context invalidates the run.
+    if re.search(r"chaos", context, re.IGNORECASE):
+        raise RuntimeError(
+            "fault-injection artefact leaked into incident context; "
+            "run aborted to avoid contaminated results")
+    return context

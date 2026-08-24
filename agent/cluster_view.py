@@ -17,6 +17,32 @@ import os
 import subprocess
 import urllib.parse
 import urllib.request
+import re
+
+# Chaos Mesh creates PodNetworkChaos, StressChaos and similar resources
+# alongside the pods it targets, and those appear in namespace events and in
+# `kubectl describe` output. An agent reading them is not diagnosing from
+# symptoms -- it is reading the experiment's answer key. Observed directly:
+# agents cited "Events show a PodNetworkChaos resource targeting redis-cart"
+# and concluded network_partition on scenarios whose true causes were
+# connection pool exhaustion and thread starvation.
+#
+# Any line naming the injection framework is therefore removed before the
+# agent sees it. Lines are dropped rather than marked, because a redaction
+# marker would itself signal that a fault was injected.
+_CHAOS_PATTERNS = re.compile(
+    r"chaos|podnetworkchaos|networkchaos|stresschaos|dnschaos|iochaos|"
+    r"timechaos|kernelchaos|httpchaos|chaos-mesh|chaos-daemon|chaos-controller",
+    re.IGNORECASE,
+)
+
+
+def _redact_chaos(text: str) -> str:
+    """Drop any line referring to the fault-injection framework."""
+    return "\n".join(
+        line for line in text.splitlines()
+        if not _CHAOS_PATTERNS.search(line)
+    )
 
 
 class ClusterView:
@@ -39,7 +65,7 @@ class ClusterView:
         return out.stdout
 
     def describe_pod(self, namespace: str, pod: str) -> str:
-        return self._run("describe", "pod", pod, "-n", namespace)[:8000]
+        return _redact_chaos(self._run("describe", "pod", pod, "-n", namespace))[:8000]
 
     def pods_for_workload(self, namespace: str, workload: str) -> list[dict]:
         raw = self._run("get", "pods", "-n", namespace, "-o", "json")
@@ -75,11 +101,11 @@ class ClusterView:
         text = cur[:6000]
         if not prev.startswith("ERROR"):
             text += "\n--- previous container instance ---\n" + prev[:3000]
-        return text
+        return _redact_chaos(text)
 
     def get_events(self, namespace: str) -> str:
-        return self._run("get", "events", "-n", namespace,
-                         "--sort-by=.lastTimestamp")[-6000:]
+        raw = self._run("get", "events", "-n", namespace, "--sort-by=.lastTimestamp")
+        return _redact_chaos(raw)[-6000:]
 
     def rollout_history(self, namespace: str, workload: str) -> str:
         return self._run("rollout", "history", f"deployment/{workload}", "-n", namespace)[:2000]
