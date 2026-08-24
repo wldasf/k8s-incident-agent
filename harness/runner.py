@@ -53,6 +53,7 @@ POST_ACTION_SETTLE_S = float(os.environ.get("POST_ACTION_SETTLE_S", "25"))
 
 POLICY_DIR = pathlib.Path(__file__).resolve().parents[1] / "agent" / "policies"
 RESULTS = pathlib.Path(__file__).resolve().parents[1] / "results"
+HARNESS_VERSION = 2
 
 
 def _check_resolution(scenario, view: ClusterView, smoke: bool = False) -> tuple[bool, float | None]:
@@ -103,7 +104,8 @@ def run_once(scenario, policy_name: str, estimator: str, repeat: int,
         "scenario": scenario.id, "fault_class": scenario.fault_class.value,
         "true_root_cause": scenario.root_cause_class.value,
         "policy": policy_name, "estimator": estimator, "repeat": repeat,
-        "model": model_label, "started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "model": model_label, "harness_version": HARNESS_VERSION, 
+        "started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "smoke": smoke,
     }
 
@@ -261,8 +263,9 @@ def main() -> int:
         for line in out.read_text().splitlines():
             if line.strip():
                 r = json.loads(line)
-                already_done.add((r.get('scenario'), r.get('policy'),
-                                  r.get('estimator'), r.get('repeat')))
+                if r.get('status') == 'ok' and r.get('harness_version') == HARNESS_VERSION:
+                    already_done.add((r.get('scenario'), r.get('policy'),
+                                      r.get('estimator'), r.get('repeat')))
         if already_done:
             print(f"resuming: {len(already_done)} runs already recorded")
 

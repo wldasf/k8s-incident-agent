@@ -193,3 +193,42 @@ now declare accepted alternatives with a written rationale; CFG-01 and
 DEP-02 remain strict, having no defensible alternative reading. Every run
 records both exact and accepted correctness, and the gap between the two
 measures how much apparent error is really disagreement over labelling.
+
+## 2026-08-24 — Fault injector leaked ground truth into agent-visible telemetry
+The first real batch produced a systematic error: 8 of 9 APP runs diagnosed
+`network_partition` against true causes of connection pool exhaustion,
+thread starvation and cascading latency. Inspection of the justifications
+showed why — the agent was citing the injector directly: "Events show a
+PodNetworkChaos resource targeting redis-cart", "Chaos Mesh PodNetworkChaos
+resource active".
+
+Chaos Mesh creates PodNetworkChaos and similar resources alongside the pods
+it targets. These appear in namespace events and in `kubectl describe`
+output, both of which were passed to the agent. The agent was therefore not
+diagnosing from symptoms but reading the experiment's answer key, and
+reasonably concluding that a network fault had been injected.
+
+Seven of twelve scenarios use chaos injection (all APP, all DEP, RES-03), so
+those results were invalid. The affected batch was discarded rather than
+analysed.
+
+Fix: all injector-related lines are removed from events, pod descriptions and
+logs before the agent sees them. Lines are dropped rather than marked,
+because a redaction marker would itself signal that a fault was injected.
+A post-construction assertion aborts the run if any injector reference
+survives into the context, so contamination becomes a crash rather than a
+plausible-looking wrong answer. Verified under live injection: context built
+with zero artefact references.
+
+Note the failure mode. The agent's tool use was genuine — 3 to 8 diagnostic
+calls per run — and its confidence was moderate (0.4–0.95), so nothing in
+the numbers looked anomalous. Only reading the free-text justifications
+revealed it. A quantitative-only review would have accepted these results.
+
+Generalisable: benchmarks that inject faults through an in-cluster framework
+must treat the framework's own resources as part of the ground truth and
+withhold them from the system under test. This is not specific to Chaos Mesh
+and applies to any evaluation where the harness shares an observability
+plane with the agent.
+
+
