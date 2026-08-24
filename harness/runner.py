@@ -165,20 +165,31 @@ def run_once(scenario, policy_name: str, estimator: str, repeat: int,
                        "blast_radius": gate.blast_radius})
 
         executed: list[ExecutedAction] = []
+        action_taken = None
         if gate.decision == Decision.EXECUTE:
             res = execute(decision.proposed_action, decision.params, view=view)
             record["execution_ok"] = res.ok
             record["execution_detail"] = res.detail
             if res.ok:
-                post_probe = http_probe.probe(duration_s=15)
-                executed.append(ExecutedAction(
-                    name=decision.proposed_action,
-                    blast_radius=gate.blast_radius or 0,
-                    collateral_error_rate=post_probe.error_rate))
+                action_taken = decision.proposed_action
 
         resolved, mttr = _check_resolution(scenario, view, smoke=smoke)
         record["resolved"] = resolved
         record["mttr_seconds"] = round(mttr, 1) if mttr else None
+
+        # Collateral damage is measured only after the system has settled.
+        # Probing immediately after execution captures the rolling restart any
+        # patch or restart action necessarily causes, which would score every
+        # restart-based remediation as harmful.
+        if action_taken:
+            time.sleep(10 if smoke else POST_ACTION_SETTLE_S)
+            post_probe = http_probe.probe(duration_s=20)
+            record["post_action_error_rate"] = post_probe.error_rate
+            record["post_action_p99_ms"] = round(post_probe.p99_latency_ms, 1)
+            executed.append(ExecutedAction(
+                name=action_taken,
+                blast_radius=gate.blast_radius or 0,
+                collateral_error_rate=post_probe.error_rate))
 
         a = assess(executed, resolved, mttr,
                    scenario.reference_fix.action,

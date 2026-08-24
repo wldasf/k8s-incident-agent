@@ -26,6 +26,8 @@ injection:
           - name: server
             resources:
               limits:
+                cpu: 50m
+              requests:
                 cpu: 20m
   settle_seconds: 120
 teardown:
@@ -39,6 +41,8 @@ teardown:
             resources:
               limits:
                 cpu: 200m
+              requests:
+                cpu: 100m
 root_cause_class: cpu_throttling
 accepted_root_causes:
 - resource_limit_misconfig
