@@ -231,4 +231,55 @@ withhold them from the system under test. This is not specific to Chaos Mesh
 and applies to any evaluation where the harness shares an observability
 plane with the agent.
 
+## 2026-08-24 — Harness version recorded in every result
+Resumability skipped runs that had completed successfully but were
+scientifically invalid, because it could not distinguish a contaminated
+generation from a current one. Every record now carries a harness_version,
+and resume treats only runs at the current version as done. Bumping the
+version therefore invalidates prior data automatically rather than relying
+on remembering which file is which.
+ 
+## 2026-08-24 — First clean batch: 36 runs, balanced policy, E1
+All 36 runs completed with no injection failures and no aborted batches.
+Headline figures: 47% strict accuracy, 56% lenient, 83% resolution rate,
+mean MTTR 474s, zero harmful successes across 26 executed actions.
+ 
+The aggregate accuracy figure is the least informative number in the set.
+Broken down by fault class it is monotonic: configuration drift 9/9,
+resource exhaustion 6/9, application saturation 2/9, dependency failure
+0/9. The ordering tracks how directly the cause is stated in declarative
+cluster state. An invalid image tag is written in the deployment spec; a
+memory limit below the working set is visible alongside an OOMKilled
+status; connection pool exhaustion and dependency failures must be inferred
+from behaviour distributed across services. The finding is therefore not
+that the agent is 47% accurate but that diagnostic capability degrades as
+evidence moves from declarative to inferential.
+ 
+## 2026-08-24 — Token cost rose 23x once tool use engaged
+Early single-step runs consumed ~1,700 tokens. With redaction in place the
+agent investigates properly (3-8 tool calls) and consumes ~39,800 tokens per
+run, since each tool result is appended to the conversation. Budget revised
+from ~2M to ~10M tokens for the full design. Still a few dollars at Flash
+pricing, but the earlier estimate was taken from runs where the agent was
+answering from leaked artefacts rather than investigating.
+ 
+## 2026-08-24 — Estimator arms are unnecessary for calibration analysis
+E1 and E3 are computed and recorded on every run regardless of which
+estimator gates the decision. The calibration comparison is therefore
+already collected and does not require separate experimental arms. Separate
+arms would only establish whether the gate decision differs, and that can be
+derived offline by sweeping the threshold against stored confidence values.
+Remaining collection reduced to the policy dimension (permissive,
+conservative) plus one E2 arm, since self-consistency genuinely requires
+additional sampling.
+ 
+## 2026-08-24 — Confidence is not uniformly miscalibrated
+Mean confidence was 0.80 under E1 and 0.59 under E3, a systematic gap
+consistent with the reported overconfidence of verbalised self-report. The
+dependency-failure scenarios, where strict accuracy was 0/9, show the
+pattern most sharply: incorrect diagnoses carried confidences of both
+0.85-0.90 and 0.30-0.40. Miscalibration is therefore not uniform, and the
+question of whether a confidence signal can be safely thresholded is
+answered differently by different estimators on the same runs.
+
 
