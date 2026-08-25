@@ -245,4 +245,35 @@ strict) show it sharpest: wrong answers at 0.85–0.90 *and* at 0.30–0.40. So
 "can you threshold on confidence?" gets different answers from different
 estimators on identical runs. That's the thesis in one line.
 
+## 2026-08-25
+
+**Diagnosis and remediation succeed together.** Of 36 balanced/E1 runs, 17
+had the correct label and 15 chose the reference fix — but zero cases of
+right fix under wrong label. So action selection isn't more reliable than
+diagnosis; they're coupled. Good news for the design: confidence-in-diagnosis
+is the right thing to threshold on, which I'd assumed but hadn't checked.
+
+**The reference fix is *a* correct answer, not *the* correct answer.** Two
+runs diagnosed correctly and chose differently, both resolving cleanly.
+APP-02: reference says scale_workload for thread starvation, agent chose
+rollout_restart — clears the saturated pool, arguably the more conventional
+response. APP-03: reference says delete_pod, agent chose scale_workload,
+which is *less* invasive than the reference and still worked.
+
+Not changing the reference fixes — they're the proportionality yardstick and
+moving them after seeing results would be fitting the rubric to the data.
+But reporting reference-fix match as a strict lower bound on remediation
+quality, with these two as evidence that operationally valid alternatives
+exist outside it. Also means the minimality metric is conservative: an agent
+can be scored non-minimal for choosing a gentler action than the reference.
+
+**Chaos faults expire before the observation window closes.** All 10
+non-executed runs scored "resolved" — MTTRs cluster at 1136-1203s against a
+20m injection duration. The fault lifts itself. Resolution rate of 83% is
+inflated and escalated chaos runs are mislabelled clean_resolution. Also
+corrupts `minimal`, which returns True when no action was executed. Fix:
+durations longer than the resolution timeout, plus a distinct outcome for
+resolution without action. Running the no-op baseline before anything else —
+this is exactly what it exists to catch, and I should have run it first.
+
 

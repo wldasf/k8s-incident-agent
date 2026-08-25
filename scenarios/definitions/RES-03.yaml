@@ -32,7 +32,7 @@ injection:
         memory:
           workers: 4
           size: 85%
-      duration: 20m
+      duration: 40m
   settle_seconds: 120
 teardown:
   method: chaos_mesh

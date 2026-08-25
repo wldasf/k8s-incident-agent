@@ -34,7 +34,7 @@ injection:
       delay:
         latency: 800ms
         jitter: 200ms
-      duration: 20m
+      duration: 50m
   settle_seconds: 150
 teardown:
   method: chaos_mesh

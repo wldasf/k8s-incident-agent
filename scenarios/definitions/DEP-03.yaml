@@ -32,7 +32,7 @@ injection:
         - boutique
         labelSelectors:
           app: cartservice
-      duration: 20m
+      duration: 50m
   settle_seconds: 90
 teardown:
   method: chaos_mesh

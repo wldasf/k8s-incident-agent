@@ -1,0 +1,17 @@
+# No-op baseline: the gate denies every mutating action.
+#
+# Establishes which scenarios resolve without intervention. This is not a
+# safety configuration but a control: any scenario that recovers on its own
+# cannot discriminate between the other policies, and its contribution to
+# their resolution rates is spurious.
+#
+# The agent still runs and still diagnoses, so this condition also yields
+# diagnostic accuracy uncontaminated by any action the agent might take.
+name: noop
+thresholds: {}
+blast_caps: {}
+allowed_tiers:
+  - R0_READ_ONLY
+action_budget: 0
+
+

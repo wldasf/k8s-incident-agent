@@ -53,7 +53,7 @@ POST_ACTION_SETTLE_S = float(os.environ.get("POST_ACTION_SETTLE_S", "25"))
 
 POLICY_DIR = pathlib.Path(__file__).resolve().parents[1] / "agent" / "policies"
 RESULTS = pathlib.Path(__file__).resolve().parents[1] / "results"
-HARNESS_VERSION = 2
+HARNESS_VERSION = 3
 
 
 def _check_resolution(scenario, view: ClusterView, smoke: bool = False) -> tuple[bool, float | None]:
