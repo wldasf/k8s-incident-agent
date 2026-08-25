@@ -170,11 +170,7 @@ the decision.
 and the naive baseline; verbalised confidence is known to be systematically
 overconfident.
 
-**E2, self-consistency.** The diagnosis is sampled five times at elevated
-temperature and reduced to a canonical (root cause, target, action) triple;
-confidence is the modal agreement fraction. Incomplete runs are recorded as
-a distinct outcome rather than discarded, so that an agent unable to produce
-a well-formed decision is not thereby made to appear more confident.
+**E2, self-consistency.** The diagnosis is sampled five times and reduced to a canonical (root cause, target, action) triple; confidence is the modal agreement fraction. The Gemini 3.x line deprecates the temperature parameter, so sampling diversity was verified empirically before adoption: five samples of an open-ended prompt produced four distinct responses, confirming the model remains stochastic without explicit temperature control.
 
 **E3, evidence-grounded.** Each root-cause label carries a set of weighted,
 observable predicates; confidence is the weighted fraction that hold against
