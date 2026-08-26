@@ -82,7 +82,7 @@ reference_fix:
     '
 resolution_check:
   source: promql
-  expr: sum(kube_endpointslice_endpoints{namespace="boutique",endpointslice=~"shippingservice.*"})
+  expr: sum(kube_pod_status_ready{namespace="boutique",pod=~"shippingservice.*",condition="true"})
   threshold: 0
   comparison: gt
   sustain_seconds: 90
