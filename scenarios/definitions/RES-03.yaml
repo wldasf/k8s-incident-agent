@@ -55,7 +55,7 @@ predicates:
 - id: p1
   description: Node reports MemoryPressure condition
   source: promql
-  expr: max(kube_node_status_condition{condition="MemoryPressure",status="true"})
+  expr: sum(kube_node_status_condition{condition="MemoryPressure",status="true"} == 1) or vector(0)
   threshold: 0
   comparison: gt
   weight: 1.0
@@ -85,7 +85,7 @@ reference_fix:
     '
 resolution_check:
   source: promql
-  expr: max(kube_node_status_condition{condition="MemoryPressure",status="true"})
+  expr: sum(kube_node_status_condition{condition="MemoryPressure",status="true"} == 1) or vector(0)
   threshold: 1
   comparison: lt
   sustain_seconds: 120

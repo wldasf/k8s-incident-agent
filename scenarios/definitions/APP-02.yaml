@@ -32,7 +32,7 @@ injection:
         labelSelectors:
           app: recommendationservice
       delay:
-        latency: 5000ms
+        latency: 8000ms
         jitter: 2000ms
         correlation: '25'
       duration: 50m
@@ -74,7 +74,7 @@ predicates:
 - id: p3
   description: Frontend CPU well below its limit
   source: promql
-  expr: max(rate(container_cpu_usage_seconds_total{namespace="boutique",container="server"}[5m]))
+  expr: max(rate(container_cpu_usage_seconds_total{namespace="boutique",pod=~"frontend.*",container="server"}[5m]))
   threshold: 0.4
   comparison: lt
   weight: 0.8
@@ -99,7 +99,7 @@ reference_fix:
     '
 resolution_check:
   source: http_probe
-  expr: p95_latency_ms
+  expr: p99_latency_ms
   threshold: 1000
   comparison: lt
   sustain_seconds: 150

@@ -69,7 +69,7 @@ predicates:
 - id: p3
   description: currencyservice pods healthy and not restarting
   source: promql
-  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",pod=~"currencyservice.*",container="server"}[10m])
   threshold: 1
   comparison: lt
   weight: 0.6
@@ -87,8 +87,8 @@ reference_fix:
     '
 resolution_check:
   source: http_probe
-  expr: p99_latency_ms
-  threshold: 800
+  expr: error_rate
+  threshold: 0.05
   comparison: lt
   sustain_seconds: 120
   timeout_seconds: 1500

@@ -314,4 +314,15 @@ it passes in both states is measuring nothing. Should have existed before any
 data was collected; it would have caught all five in one pass instead of five
 separate investigations.
 
+**Thirteen PromQL selectors were unscoped.** Every Online Boutique service
+names its container "server", so `container="server"` matched the entire
+namespace — and since _promql_scalar takes the max across series, each query
+answered "is anything doing X?" rather than "is this workload doing X?".
+RES-02 read 0.113 throttling at baseline, all of it from the frontend, which
+throttles under normal load; the scenario reported itself permanently
+faulted and could never register resolution. Also affects E3 predicates in
+seven scenarios, which have been drawing evidence from unrelated services.
+Worse than the earlier bugs because it produced plausible numbers everywhere
+instead of an obvious failure in one place.
+
 

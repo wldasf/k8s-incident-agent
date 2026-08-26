@@ -68,7 +68,7 @@ predicates:
 - id: p3
   description: cartservice not restarting
   source: promql
-  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",pod=~"cartservice.*",container="server"}[10m])
   threshold: 2
   comparison: lt
   weight: 0.5

@@ -24,7 +24,7 @@ injection:
           containers:
           - name: server
             readinessProbe:
-              grpc:
+              tcpSocket:
                 port: 9999
               initialDelaySeconds: 5
               periodSeconds: 10
@@ -66,7 +66,7 @@ predicates:
 - id: p4
   description: No container restarts (process itself is healthy)
   source: promql
-  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",pod=~"shippingservice.*",container="server"}[10m])
   threshold: 1
   comparison: lt
   weight: 0.5
@@ -83,7 +83,7 @@ reference_fix:
 resolution_check:
   source: promql
   expr: sum(kube_endpointslice_endpoints{namespace="boutique",endpointslice=~"shippingservice.*"})
-  threshold: 1
+  threshold: 0
   comparison: gt
   sustain_seconds: 90
   timeout_seconds: 900

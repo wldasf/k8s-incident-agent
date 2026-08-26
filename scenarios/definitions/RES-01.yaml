@@ -63,14 +63,14 @@ predicates:
 - id: p2
   description: Restart count is climbing
   source: promql
-  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[5m])
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",pod=~"cartservice.*",container="server"}[5m])
   threshold: 2
   comparison: gt
   weight: 0.8
 - id: p3
   description: Working set approaches the configured limit
   source: promql
-  expr: max(container_memory_working_set_bytes{namespace="boutique",container="server"}) / max(kube_pod_container_resource_limits{namespace="boutique",container="server",resource="memory"})
+  expr: max(container_memory_working_set_bytes{namespace="boutique",pod=~"cartservice.*",container="server"}) / max(kube_pod_container_resource_limits{namespace="boutique",pod=~"cartservice.*",container="server",resource="memory"})
   threshold: 0.9
   comparison: gt
   weight: 0.7
@@ -88,7 +88,7 @@ reference_fix:
     '
 resolution_check:
   source: promql
-  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[5m])
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",pod=~"cartservice.*",container="server"}[5m])
   threshold: 1
   comparison: lt
   sustain_seconds: 120

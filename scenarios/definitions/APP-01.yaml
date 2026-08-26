@@ -65,7 +65,7 @@ predicates:
 - id: p2
   description: CPU utilisation remains low despite the latency
   source: promql
-  expr: max(rate(container_cpu_usage_seconds_total{namespace="boutique",container="server"}[5m]))
+  expr: max(rate(container_cpu_usage_seconds_total{namespace="boutique",pod=~"cartservice.*",container="server"}[5m]))
   threshold: 0.3
   comparison: lt
   weight: 0.9

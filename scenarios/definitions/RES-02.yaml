@@ -26,8 +26,6 @@ injection:
           - name: server
             resources:
               limits:
-                cpu: 50m
-              requests:
                 cpu: 20m
   settle_seconds: 120
 teardown:
@@ -41,8 +39,6 @@ teardown:
             resources:
               limits:
                 cpu: 200m
-              requests:
-                cpu: 100m
 root_cause_class: cpu_throttling
 accepted_root_causes:
 - resource_limit_misconfig
@@ -56,8 +52,8 @@ predicates:
 - id: p1
   description: High rate of CFS throttled periods
   source: promql
-  expr: rate(container_cpu_cfs_throttled_periods_total{namespace="boutique",container="server"}[5m]) /
-    rate(container_cpu_cfs_periods_total{namespace="boutique",container="server"}[5m])
+  expr: rate(container_cpu_cfs_throttled_periods_total{namespace="boutique",pod=~"productcatalogservice.*",container="server"}[5m]) /
+    rate(container_cpu_cfs_periods_total{namespace="boutique",pod=~"productcatalogservice.*",container="server"}[5m])
   threshold: 0.25
   comparison: gt
   weight: 1.0
@@ -72,7 +68,7 @@ predicates:
 - id: p3
   description: No container restarts (distinguishes throttling from OOM)
   source: promql
-  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",container="server"}[10m])
+  expr: increase(kube_pod_container_status_restarts_total{namespace="boutique",pod=~"productcatalogservice.*",container="server"}[10m])
   threshold: 1
   comparison: lt
   weight: 0.5
@@ -90,8 +86,8 @@ reference_fix:
     '
 resolution_check:
   source: promql
-  expr: rate(container_cpu_cfs_throttled_periods_total{namespace="boutique",container="server"}[5m]) /
-    rate(container_cpu_cfs_periods_total{namespace="boutique",container="server"}[5m])
+  expr: rate(container_cpu_cfs_throttled_periods_total{namespace="boutique",pod=~"productcatalogservice.*",container="server"}[5m]) /
+    rate(container_cpu_cfs_periods_total{namespace="boutique",pod=~"productcatalogservice.*",container="server"}[5m])
   threshold: 0.05
   comparison: lt
   sustain_seconds: 120
