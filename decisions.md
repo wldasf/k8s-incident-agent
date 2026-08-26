@@ -276,4 +276,42 @@ durations longer than the resolution timeout, plus a distinct outcome for
 resolution without action. Running the no-op baseline before anything else —
 this is exactly what it exists to catch, and I should have run it first.
 
+## 2026-08-26
+
+**Five resolution checks were never detecting anything.** The no-op baseline
+showed five scenarios "resolving" with no action taken — but the MTTRs gave
+it away: 175.2s three times running, identical to the decisecond. Real
+recovery has variance. In every case MTTR ≈ sustain_seconds + one poll, so
+the check was passing on its first evaluation. They weren't self-recovering;
+the checks never registered the fault at all.
+
+Measured the actual effect of each fault on the frontend. Healthy baseline
+is p95=100ms, p99=231ms, err=0.000, rps=5.0. Against that: DEP-01 wanted p99
+< 800ms, APP-02 wanted p95 < 1000ms, DEP-03 wanted err < 0.01 — all satisfied
+by a healthy system. I set those thresholds by guessing at plausible values
+instead of measuring, and never checked they could fail.
+
+Each fault also has a completely different signature, which is why one
+threshold shape didn't work: currencyservice delay produces err=1.000 with
+latency *dropping* to 7ms (frontend fails fast); redis-cart delay produces
+p99=3338ms and throughput collapse to 0.4rps; recommendationservice at 2.5s
+produces nothing at all — Online Boutique degrades gracefully on
+non-essential services. Had to go to 8s to get a signal (p99 231→4222ms),
+and that's the value to use.
+
+**DEP-03 has never worked.** Chaos Mesh reports AllInjected=False with a Rust
+panic in the DNS injector. `kubectl apply` returned success the whole time,
+because apply only means the CRD was accepted — injection happens
+asynchronously and reports separately in status.conditions, which the harness
+never read.
+
+Both problems are the same mistake in different clothes: assuming a step
+worked because the command that started it returned success. Built two tools
+in response. The injector now polls status.conditions and fails loudly if the
+fault didn't take. And a validation tool that, per scenario, checks the
+resolution check passes at baseline and fails under fault — a scenario where
+it passes in both states is measuring nothing. Should have existed before any
+data was collected; it would have caught all five in one pass instead of five
+separate investigations.
+
 

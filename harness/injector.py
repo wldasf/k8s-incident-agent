@@ -61,6 +61,42 @@ def _capture_deployment(ns: str, wl: str) -> dict | None:
     }
 
 
+def _wait_for_injection(kind: str, name: str, namespace: str,
+                        timeout_s: int = 90) -> tuple[bool, str]:
+    """Block until Chaos Mesh reports the fault injected, or fail loudly.
+
+    Applying a chaos manifest and injecting a fault are different events.
+    `kubectl apply` returns success once the custom resource is accepted; the
+    controller then attempts injection asynchronously and records the outcome
+    in status.conditions. An injector that crashes reports AllInjected=False
+    while apply still succeeds, producing a run that appears normal but in
+    which no fault was ever present.
+
+    Returns (injected, detail). On failure, detail carries the controller's
+    own error message where one is available.
+    """
+    deadline = time.monotonic() + timeout_s
+    last = "no status reported"
+    while time.monotonic() < deadline:
+        ok, raw = _kubectl(["get", kind.lower(), name, "-n", namespace,
+                            "-o", "json"], truncate=None)
+        if ok:
+            status = json.loads(raw).get("status", {})
+            conds = {c["type"]: c["status"] for c in status.get("conditions", [])}
+            if conds.get("AllInjected") == "True":
+                return True, "injected"
+            if conds.get("Selected") == "False":
+                last = "selector matched no pods"
+            # Surface the controller's own error rather than a generic timeout.
+            for rec in status.get("experiment", {}).get("containerRecords", []):
+                for ev in rec.get("events", []):
+                    msg = ev.get("message", "")
+                    if msg and "error" in msg.lower():
+                        last = msg[:300]
+        time.sleep(3)
+    return False, f"fault not injected within {timeout_s}s: {last}"
+
+
 def inject(scenario) -> tuple[bool, str, InjectionState]:
     """Apply the scenario's fault. Returns (ok, detail, state_for_teardown)."""
     ns = scenario.target.namespace
@@ -82,11 +118,18 @@ def inject(scenario) -> tuple[bool, str, InjectionState]:
             json.dump(manifest, fh)      # kubectl accepts JSON for -f
             path = fh.name
         ok, detail = _kubectl(["apply", "-f", path])
-        if ok:
-            state.chaos_resources.append((manifest["kind"],
-                                          manifest["metadata"]["name"],
-                                          manifest["metadata"].get("namespace", "chaos-mesh")))
-        return ok, detail, state
+        if not ok:
+            return False, detail, state
+        kind = manifest["kind"]
+        name = manifest["metadata"]["name"]
+        cns = manifest["metadata"].get("namespace", "chaos-mesh")
+        # Record for teardown before verifying: a partially injected fault
+        # still needs cleaning up.
+        state.chaos_resources.append((kind, name, cns))
+        injected, idetail = _wait_for_injection(kind, name, cns)
+        if not injected:
+            return False, f"chaos applied but not injected: {idetail}", state
+        return True, "injected", state
 
     return False, f"unsupported injection method: {scenario.injection.method}", state
 
