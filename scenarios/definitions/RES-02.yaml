@@ -26,6 +26,8 @@ injection:
           - name: server
             resources:
               limits:
+                cpu: 50m
+              requests:
                 cpu: 20m
   settle_seconds: 120
 teardown:

@@ -24,7 +24,7 @@ injection:
           containers:
           - name: server
             readinessProbe:
-              tcpSocket:
+              grpc:
                 port: 9999
               initialDelaySeconds: 5
               periodSeconds: 10
