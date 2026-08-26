@@ -1,11 +1,11 @@
 id: CFG-03
 name: Readiness probe misconfiguration on shippingservice
 fault_class: configuration_drift
-description: 'The readiness probe on shippingservice is pointed at an incorrect port. The container runs
-  correctly but never reports Ready, so the Service removes it from endpoints and callers receive connection
-  failures.
-
-  '
+description: >
+  The readiness probe on shippingservice is pointed at an incorrect port. The
+  rolling update stalls: the new pod never becomes ready, and Kubernetes
+  correctly refuses to terminate the old one, so the deployment sits
+  permanently incomplete with an unavailable replica.
 literature_basis: 'Health-check and probe misconfiguration is documented as a distinct fault class affecting
   container orchestration availability [Zhou21]. It is included because a healthy process is removed from
   service by its own readiness check, producing an outage with no application-level error.
@@ -37,11 +37,15 @@ accepted_root_causes:
 - resource_limit_misconfig
 accepted_rationale: A probe misconfiguration and a resource misconfiguration are both configuration faults
   removing a healthy process from service.
-ground_truth_explanation: 'The readiness probe targets a port on which nothing listens. The process is
-  healthy and serving on its real port, but Kubernetes marks the pod NotReady and withdraws it from the
-  Service endpoints.
+ground_truth_explanation: >
+  The readiness probe targets a port on which nothing listens, so the new pod
+  never reports ready and the rollout cannot complete. Service availability is
+  preserved throughout, because the previous pod continues serving — the
+  incident is a deployment that cannot finish, not an outage. This is the
+  failure mode a broken probe actually produces under a rolling update
+  strategy, and it is why the orchestrator's protection makes the fault
+  quieter than it first appears.
 
-  '
 predicates:
 - id: p1
   description: Pods running but not Ready
@@ -82,9 +86,9 @@ reference_fix:
     '
 resolution_check:
   source: promql
-  expr: sum(kube_pod_status_ready{namespace="boutique",pod=~"shippingservice.*",condition="true"})
-  threshold: 0
-  comparison: gt
+  expr: kube_deployment_status_replicas_unavailable{namespace="boutique",deployment="shippingservice"}
+  threshold: 1
+  comparison: lt
   sustain_seconds: 90
   timeout_seconds: 900
 known_distractors:
