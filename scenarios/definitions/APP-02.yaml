@@ -12,6 +12,15 @@ literature_basis: 'Thread and worker-pool starvation arising from blocking downs
   on the slow service.
 
   '
+diagnosis_only: true
+diagnosis_only_reason: >
+  An 8s delay injected into recommendationservice produces no client-observable
+  degradation: frontend p99 measured 82-97ms under fault against a 231ms
+  healthy baseline. Chaos Mesh confirms AllInjected=True, so the fault is real;
+  the frontend simply does not block on recommendations, rendering without them
+  rather than waiting. The scenario is retained for diagnostic scoring and
+  excluded from resolution and outcome statistics, since no client-visible
+  failure exists to resolve.
 target:
   namespace: boutique
   workload: frontend

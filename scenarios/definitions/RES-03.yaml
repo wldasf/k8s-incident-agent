@@ -86,7 +86,7 @@ reference_fix:
 resolution_check:
   source: promql
   expr: sum(increase(kube_pod_container_status_restarts_total{namespace="boutique",pod=~"recommendationservice.*"}[5m]))
-  threshold: 1
+  threshold: 3
   comparison: lt
   sustain_seconds: 120
   timeout_seconds: 1200

@@ -160,6 +160,13 @@ class Scenario(BaseModel):
     reference_fix: ReferenceFix
     resolution_check: ResolutionCheck
 
+    # A fault can be real, correctly injected, and correctly diagnosed while
+    # producing no client-observable failure. Such scenarios are scored for
+    # diagnosis but excluded from resolution and outcome statistics, since
+    # there is nothing for a remediation to resolve.
+    diagnosis_only: bool = False
+    diagnosis_only_reason: str = ""
+
     # Distractors: plausible but incorrect diagnoses this scenario is designed
     # to elicit. Recording these lets the analysis report *how* the agent was
     # wrong, not merely that it was.
