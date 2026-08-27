@@ -33,8 +33,7 @@ injection:
           app: recommendationservice
       delay:
         latency: 8000ms
-        jitter: 2000ms
-        correlation: '25'
+        jitter: 1000ms
       duration: 50m
   settle_seconds: 150
 teardown:

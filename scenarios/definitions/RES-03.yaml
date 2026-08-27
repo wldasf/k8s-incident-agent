@@ -85,7 +85,7 @@ reference_fix:
     '
 resolution_check:
   source: promql
-  expr: sum(kube_node_status_condition{condition="MemoryPressure",status="true"} == 1) or vector(0)
+  expr: sum(increase(kube_pod_container_status_restarts_total{namespace="boutique",pod=~"recommendationservice.*"}[5m]))
   threshold: 1
   comparison: lt
   sustain_seconds: 120
