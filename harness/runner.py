@@ -53,7 +53,13 @@ POST_ACTION_SETTLE_S = float(os.environ.get("POST_ACTION_SETTLE_S", "25"))
 
 POLICY_DIR = pathlib.Path(__file__).resolve().parents[1] / "agent" / "policies"
 RESULTS = pathlib.Path(__file__).resolve().parents[1] / "results"
-HARNESS_VERSION = 3
+# Bumped whenever a change invalidates previously collected data. Recorded in
+# every result so that a mixed-generation results file can be detected
+# automatically rather than remembered. v1 -> v2: fault-injection artefacts
+# were leaking into agent-visible telemetry. v2 -> v3: timed chaos faults
+# expired inside the resolution window. v3 -> v4: resolution checks rewritten
+# after validation found most of them could not detect their own fault.
+HARNESS_VERSION = 4
 
 
 def _check_resolution(scenario, view: ClusterView, smoke: bool = False) -> tuple[bool, float | None]:
