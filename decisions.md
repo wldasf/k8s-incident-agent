@@ -201,5 +201,22 @@ fails under fault. Should have existed before any data was collected.
 - **RES-03** threshold was below the background restart noise. Raised it.
 Pattern across both days: metrics returning plausible numbers for a slightly
 different question than the one I was asking.
+- **Replaced DEP-03** rather than dropping it. Same fault class — dependency
+  unreachable — but via network partition to redis-cart instead of DNS
+  poisoning, since partition injection is proven working in DEP-02 and the DNS
+  component isn't. Validates clean: error_rate 0 → 1.
+- **RES-03 marked diagnosis-only.** StressChaos `mode: one` runs the stressor
+  inside a single pod's cgroup, and `size` is against that container's limit,
+  not the node's. Node never reports pressure, pod never OOM-killed, 0 restarts
+  under fault. Raising the stress until the container dies would just reproduce
+  RES-01.
+- Decided against replacing APP-02 and RES-03 with detectable alternatives.
+  Two independent cases of "real fault, correctly diagnosable, no observable
+  impact" is a finding worth keeping — a benchmark where every fault happens to
+  be visible would be tidier and less honest.
+- **Harness v4.** Resolution checks were rewritten across most scenarios, so
+  everything collected earlier is invalid.
+- Benchmark: 10 fully usable, 2 diagnosis-only, 0 excluded.
+
 
 
