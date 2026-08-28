@@ -41,7 +41,7 @@ class LLMClient:
     model: str
     usage: Usage = field(default_factory=Usage)
     timeout_s: int = 120
-    max_retries: int = 3
+    max_retries: int = 4
 
     def complete(self, system: str, messages: list[dict], temperature: float = 0.0) -> str:
         """messages: [{"role": "user"|"assistant", "content": str}, ...] -> text."""
@@ -55,7 +55,11 @@ class LLMClient:
             except urllib.error.HTTPError as e:
                 # 429/5xx: back off and retry; anything else is a real error.
                 if e.code in (429, 500, 502, 503) and attempt < self.max_retries - 1:
-                    time.sleep(2 ** (attempt + 1))
+                    # 503 means the provider is saturated, not that we sent too
+                    # much. A few seconds is not enough for a demand spike to
+                    # clear, and a lost run costs 20 minutes of cluster time.
+                    wait = 30 * (attempt + 1) if e.code == 503 else 2 ** (attempt + 1)
+                    time.sleep(wait)
                     continue
                 body = e.read().decode(errors="replace")[:500]
                 raise RuntimeError(f"{self.provider} HTTP {e.code}: {body}") from e

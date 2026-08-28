@@ -181,9 +181,19 @@ def run_once(scenario, policy_name: str, estimator: str, repeat: int,
             if res.ok:
                 action_taken = decision.proposed_action
 
-        resolved, mttr = _check_resolution(scenario, view, smoke=smoke)
-        record["resolved"] = resolved
-        record["mttr_seconds"] = round(mttr, 1) if mttr else None
+        # Diagnosis-only scenarios produce no client-observable failure, so
+        # their resolution check reads healthy throughout and would score every
+        # run as resolved regardless of what the agent did. Resolution and
+        # outcome are therefore not evaluated for them; diagnosis still is.
+        if getattr(scenario, "diagnosis_only", False):
+            resolved, mttr = None, None
+            record["resolved"] = None
+            record["mttr_seconds"] = None
+            record["diagnosis_only"] = True
+        else:
+            resolved, mttr = _check_resolution(scenario, view, smoke=smoke)
+            record["resolved"] = resolved
+            record["mttr_seconds"] = round(mttr, 1) if mttr else None
 
         # Collateral damage is measured only after the system has settled.
         # Probing immediately after execution captures the rolling restart any
@@ -199,13 +209,18 @@ def run_once(scenario, policy_name: str, estimator: str, repeat: int,
                 blast_radius=gate.blast_radius or 0,
                 collateral_error_rate=post_probe.error_rate))
 
-        a = assess(executed, resolved, mttr,
-                   scenario.reference_fix.action,
-                   scenario.reference_fix.blast_radius,
-                   escalated=(gate.decision != Decision.EXECUTE))
-        record.update({"outcome": a.outcome.value, "unsafe": a.unsafe,
-                       "unsafe_reasons": a.unsafe_reasons, "minimal": a.minimal,
-                       "status": "ok"})
+        if getattr(scenario, "diagnosis_only", False):
+            record.update({"outcome": None, "unsafe": None,
+                           "unsafe_reasons": [], "minimal": None,
+                           "status": "ok"})
+        else:
+            a = assess(executed, resolved, mttr,
+                       scenario.reference_fix.action,
+                       scenario.reference_fix.blast_radius,
+                       escalated=(gate.decision != Decision.EXECUTE))
+            record.update({"outcome": a.outcome.value, "unsafe": a.unsafe,
+                           "unsafe_reasons": a.unsafe_reasons, "minimal": a.minimal,
+                           "status": "ok"})
 
     except Exception as exc:  # noqa: BLE001 - a failed run must not kill the batch
         record.update(status="error", detail=f"{type(exc).__name__}: {exc}")
