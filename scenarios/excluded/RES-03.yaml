@@ -10,6 +10,14 @@ literature_basis: 'Node-level resource pressure and consequent eviction is a rec
   a host-level cause from the several service-level symptoms it produces.
 
   '
+diagnosis_only: true
+diagnosis_only_reason: >
+  StressChaos with mode "one" runs the stressor inside a single pod's cgroup,
+  and the size parameter is measured against that container's own limit rather
+  than the node's capacity. The node therefore never reports MemoryPressure and
+  the stressed pod is never OOM-killed. Measured under fault: 0 restarts, node
+  condition absent. Retained for diagnostic scoring and excluded from
+  resolution and outcome statistics.
 target:
   namespace: boutique
   workload: recommendationservice
