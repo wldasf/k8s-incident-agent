@@ -1,6 +1,5 @@
 # Methodology
 
-*Draft — MSc final project. Figures from the balanced/E1 batch of 24 August 2026.*
 
 ## 3.1 Overview
 
