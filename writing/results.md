@@ -97,19 +97,30 @@ scenario's reference remediation, and labelled the cause `cascading_latency`
 rather than `connection_pool_exhaustion`.
 
 Diagnosis and remediation are tightly coupled. Across the balanced condition,
-17 runs produced a correct label and 15 selected the reference fix, with **no
+20 runs produced a correct label and 15 selected the reference fix, with **no
 cases of a correct remediation under an incorrect diagnosis**. This matters
 for the design: it establishes that confidence in diagnosis is a legitimate
 quantity on which to gate action, which was assumed rather than demonstrated
 when the gate was specified. Had action selection proved more reliable than
 labelling, the gate would have been thresholding the wrong signal.
 
-The converse case did occur twice, both resolving cleanly: an agent diagnosed
-correctly and chose an action other than the reference. In APP-02 it selected
-`rollout_restart` where the reference specifies `scale_workload`, and in
-APP-03 it selected `scale_workload` where the reference specifies
-`delete_pod` — the latter strictly less invasive than the reference. Agreement
-with the reference fix is therefore a lower bound on remediation quality.
+The five runs that diagnosed correctly but selected a different action are
+instructive. Four of the five are scoreable, and only one of those resolved:
+in DEP-03 the agent chose `rollout_restart` where the reference specifies
+`delete_pod`, and the incident cleared. The remaining three, all APP-03,
+failed — two as benign failures and one as the corpus's only compound failure,
+in which `scale_workload` neither resolved the incident nor left unrelated
+services undisturbed. The fifth is an APP-02 run and is diagnosis-only.
+
+Departure from the reference fix therefore carried a real cost rather than
+representing an equally valid alternative. The reference fixes were specified
+before collection as the minimal known-correct remediation, and the evidence
+is consistent with that specification: a correct diagnosis followed by a
+non-reference action succeeded once in four scoreable attempts, against 15 of
+15 for the reference action itself. Agreement with the reference fix is
+accordingly a reasonable proxy for remediation quality on this benchmark,
+subject to the small sample and the concentration of the four departures in a
+single scenario.
 
 ## 4.3 Gate behaviour
 
@@ -429,9 +440,12 @@ model's disposition, not of LLM agents generally.
 **Frontend-only measurement.** Application latency and error rate are measured
 at the frontend, so per-service attribution is unavailable.
 
-**Reference fixes are one correct answer.** Two runs selected a defensible
-alternative action and resolved cleanly, one of them less invasive than the
-reference. Agreement with the reference fix is a lower bound.
+**Reference fixes as a proxy.** Departures from the reference action
+succeeded once in four scoreable attempts, so agreement with the reference fix
+is a reasonable proxy for remediation quality on this benchmark rather than a
+lower bound. The four departures concentrate in a single scenario, however,
+and a larger sample across more scenarios would be needed to establish the
+reference actions as uniquely correct.
 
 **Accepted alternatives are an author judgement**, fixed before collection and
 documented per scenario, but chosen by the same person who designed the
