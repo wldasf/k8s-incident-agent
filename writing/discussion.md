@@ -219,10 +219,14 @@ property of this model, not of LLM agents generally.
 the frontend, so per-service attribution is unavailable and a fault degrading
 one service is observed only through its effect on the whole path.
 
-**Reference fixes are one correct answer, not the only one.** Two runs
-diagnosed correctly and selected a different action, both resolving cleanly —
-in one case an action strictly less invasive than the reference. Agreement
-with the reference fix is therefore a lower bound on remediation quality.
+**Reference fixes as a proxy for remediation quality.** Five runs diagnosed
+correctly and selected a different action. Of the four that were scoreable,
+one resolved and three failed, including the corpus's only compound failure.
+Departure from the reference action therefore carried a real cost rather than
+representing an equally valid alternative, which supports the reference fixes
+as specified. The four departures concentrate in a single scenario, however,
+so the sample is too small to establish the reference actions as uniquely
+correct.
 
 **Accepted alternatives are an author judgement.** The alternative labels were
 fixed before collection and each carries a written rationale, but the choice
