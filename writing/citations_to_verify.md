@@ -4,9 +4,9 @@ Every key below appears in `literature_review.md`. Some were found via
 secondary sources during drafting and **must be confirmed against the
 primary source**. Do not submit an unverified citation.
 
-## Confirmed — high confidence
+## Confirmed
 
-| Key | Reference | Status |
+| Key | Reference | Notes |
 |---|---|---|
 | `Yao23` | S. Yao et al., "ReAct: Synergizing Reasoning and Acting in Language Models," ICLR 2023. arXiv:2210.03629 | Solid |
 | `Lewis20` | P. Lewis et al., "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks," NeurIPS 2020. arXiv:2005.11401 | Solid |
@@ -17,6 +17,9 @@ primary source**. Do not submit an unverified citation.
 | `Chen23` | Y. Chen et al., "Automatic Root Cause Analysis via Large Language Models for Cloud Incidents," 2023. arXiv:2305.15778 | Solid |
 | `Wang24` | Z. Wang et al., "RCAgent: Cloud Root Cause Analysis by Autonomous Agents with Tool-Augmented LLMs," CIKM 2024, pp. 4966–4974 | Solid |
 | `Oops25` | "When AIOps Become 'AI Oops': Subverting LLM-driven IT Operations via Telemetry Manipulation," 2025. arXiv:2508.06394 | Solid |
+| `Xiong24` | M. Xiong, Z. Hu, X. Lu, Y. Li, J. Fu, J. He, B. Hooi, "Can LLMs Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in LLMs," ICLR 2024. arXiv:2306.13063 | Verified. Benchmarks black-box confidence on calibration *and* failure prediction; finds verbalized confidence overconfident; covers sampling-consistency aggregation (E2). |
+| `Meas26` | J. Odmark, G. Rubin, D. van der Vyver, "A Measurement Substrate for Agentic Kubernetes Operations: Methodology and a Case Study in Retrieval-Compounding Falsification," 2026. arXiv:2605.23058 | Verified. Argues claims about Kubernetes agents are largely unfalsifiable for want of agent-disabled controls; reports three confounds its instrumentation caught. |
+| `Kirchhof25` | M. Kirchhof, G. Kasneci, E. Kasneci, "Position: Uncertainty Quantification Needs Reassessment for Large-language Model Agents," ICML 2025, PMLR 267. arXiv:2505.22655 | Read in full. Supports reasoning from the task rather than the aleatoric/epistemic labels (§2.3), and numeric thresholds for automated abstention (§4.3). Does **not** support any claim about a missing agentic UQ benchmark. |
 | `K8sGPT` | K8sGPT project documentation, https://k8sgpt.ai | Cite homepage |
 | `Holmes` | HolmesGPT project, https://github.com/robusta-dev/holmesgpt | Verify URL |
 
@@ -34,31 +37,23 @@ primary source**. Do not submit an unverified citation.
 | `Jha25` | S. Jha et al., "ITBench: Evaluating AI Agents across Diverse Real-World IT Automation Tasks," ICML 2025 | Venue confirmation |
 | `AIR26` | "AIR: Improving Agent Safety through Incident Response," 2026. arXiv:2602.11749 | Authors, venue |
 | `Cap26` | "Oversight Has a Capacity: Calibrating Agent Guards to a Subjective, Fatiguing Human," 2026. arXiv:2606.08919 | Authors; the inverted-U claim |
-| `Xiong24` | S. Xiong et al., on verbalized confidence in LLMs, 2024 | **Full citation not yet established** |
-| `Meas26` | "A Measurement Substrate for Agentic Kubernetes Operations," 2026 | **arXiv id uncertain — verify or drop** |
 
 ## Non-academic sources — use sparingly
 
-These are practitioner sources. They are legitimate evidence of *industry
-practice* but must not be cited as research findings. Prefer an academic
-source where one exists; where one does not, that absence is itself the
-argument.
+Legitimate evidence of *industry practice* but not of research findings.
+Prefer an academic source where one exists.
 
 | Key | Source | Used for |
 |---|---|---|
-| `Zyl26` | Zylos Research, "LLM Calibration and Uncertainty Quantification in Production AI Agents," Apr 2026 | Confidence-gated escalation as dominant pattern; the ICML 2025 UQ benchmark gap. **Trace the ICML position paper and cite it directly.** |
+| `Zyl26` | Zylos Research, "LLM Calibration and Uncertainty Quantification in Production AI Agents," Apr 2026. https://zylos.ai/research/2026-04-18-llm-calibration-uncertainty-production-agents/ | Confidence-gated escalation as the dominant industry pattern **only**. Its claim that no mature agentic UQ benchmark exists is an embellishment of arXiv:2505.22655, which makes no such claim; that assertion was removed from the dissertation rather than re-cited. |
 | `Dig26` | digitalapplied.com, "Human-in-the-Loop Escalation Design for AI Agents," Jun 2026 | Four-tier risk classification; 90%-claimed vs 75%-actual |
 | `Gal26` | Galileo, "How to Build Human-in-the-Loop Oversight for AI Agents," Apr 2026 | Calibration and discrimination as independent properties |
 | `Dev26` | DEV Community, HITL patterns and best practices, Apr 2026 | Recommendation against single-signal gating |
 
-## Priority actions
+## Remaining actions
 
-1. **Trace the ICML 2025 UQ position paper.** It is the single strongest
-   citation for the gap this project addresses, and it is currently sourced
-   second-hand. Find and cite the primary.
-2. **Read OperAID properly.** It is the closest work to this project. The
-   review must state precisely how this project differs, and that statement
-   must be accurate.
-3. **Resolve `Xiong24` and `Meas26`** or remove them; each currently carries
-   a claim on an uncertain citation.
-4. Replace practitioner sources with academic equivalents wherever possible.
+1. **Read OperAID properly.** Closest work to this project; §5.6 makes claims
+   about how this study differs and they must be accurate.
+2. **Read AIOpsLab properly** for the same reason.
+3. Verify the ten entries in the MUST VERIFY table.
+4. Replace practitioner sources with academic equivalents where possible.

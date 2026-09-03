@@ -4,8 +4,8 @@ Deployed systems that let language-model agents act on live infrastructure
 almost universally gate that action on the agent's confidence: act above a
 threshold, escalate below it. The confidence signal on which this depends is
 known to be poorly calibrated in general and has not been evaluated in
-operational incident response, and no benchmark for agentic uncertainty exists
-in mature form.
+operational incident response, and no empirical evidence exists as to which
+estimator best serves that thresholding task.
 
 This dissertation measures where that boundary should fall. It contributes a
 validated benchmark of eleven reproducible Kubernetes fault scenarios spanning

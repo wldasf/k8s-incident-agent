@@ -27,11 +27,13 @@ autonomously above a confidence threshold and escalating below it — is the
 dominant pattern in deployed agent systems. Yet the confidence signal on which
 that pattern depends is known to be poorly calibrated in general, and has not
 been evaluated in operational incident response. An ICML position paper on
-uncertainty quantification for language-model agents calls for a benchmark
-suite for agentic uncertainty distinct from static question-answering
-benchmarks, and no such benchmark exists in mature form. The mechanism
-governing autonomous action in production has not been measured in the setting
-where it is used.
+uncertainty quantification for language-model agents argues that the field
+should reason from the practical task — abstention among them — and notes
+that numerical thresholds remain appropriate where an agent's output is consumed
+by an automated system rather than a human. What it does not supply, and nor
+does the wider literature, is evidence about which estimator best serves that task.
+The mechanism governing autonomous action in production has not been measured
+in the setting where it is used.
 
 ## 1.2 Aim and research questions
 

@@ -91,12 +91,15 @@ discrimination are moreover independent properties: a score may rank correct
 answers above incorrect ones while being numerically wrong, or be numerically
 plausible while failing to separate them [Gal26].
 
-This is a load-bearing assumption with little support beneath it. And the
-gap is recognised: an ICML 2025 position paper on uncertainty quantification
-for LLM agents calls for a benchmark suite for agentic uncertainty, distinct
-from static question-answering benchmarks, and as of early 2026 no such
-benchmark exists in mature form [Zyl26]. The mechanism on which safe
-autonomy depends has not been evaluated in the operational setting where it
+This is a load-bearing assumption with little support beneath it. Kirchhof et al.
+[Kirchhof25] argue that the traditional aleatoric–epistemic decomposition is unsuitable
+for interactive agents, and that the field should reason from the practical task — abstention
+among them — treating uncertainty estimators as tools rather than as labels. They further
+note that numerical uncertainty with a threshold remains appropriate where an agent's
+output is consumed by an automated system rather than a human, which is the configuration
+studied here. What neither that paper nor the wider literature supplies is empirical evidence
+about which estimator best serves that thresholding task in an operational setting. The mechanism
+on which safe autonomy depends has not been evaluated in the operational setting where it
 is used.
 
 Alternatives to self-report exist but are unevaluated in this domain.
@@ -171,8 +174,8 @@ either.
 Confidence-gated escalation is the dominant mechanism for governing
 autonomous action in deployed systems, yet the confidence signal it depends on
 is known to be miscalibrated in general and has not been evaluated in
-operational incident response. No agentic uncertainty benchmark exists in
-mature form.
+operational incident response. No evidence exists as to which estimator best
+supports that thresholding decision in an operational setting.
 
 Success in remediation is currently measured as resolution, which conflates
 proportionate repair with disproportionate repair, and conflates appropriate
