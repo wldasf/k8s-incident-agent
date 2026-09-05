@@ -13,7 +13,7 @@ primary source**. Do not submit an unverified citation.
 | `Guo17` | C. Guo et al., "On Calibration of Modern Neural Networks," ICML 2017 | Solid |
 | `Kadavath22` | S. Kadavath et al., "Language Models (Mostly) Know What They Know," 2022. arXiv:2207.05221 | Solid |
 | `Wang23` | X. Wang et al., "Self-Consistency Improves Chain of Thought Reasoning," ICLR 2023 | Solid |
-| `Chen25` | Y. Chen et al., "AIOpsLab: A Holistic Framework to Evaluate AI Agents for Enabling Autonomous Clouds," MLSys 2025. arXiv:2501.06706 | Solid |
+| `Chen25` | Y. Chen et al., "AIOpsLab: A Holistic Framework to Evaluate AI Agents for Enabling Autonomous Clouds," MLSys 2025. arXiv:2501.06706 | Solid. Note: same first author as Stratus25. |
 | `Chen23` | Y. Chen et al., "Automatic Root Cause Analysis via Large Language Models for Cloud Incidents," 2023. arXiv:2305.15778 | Solid |
 | `Wang24` | Z. Wang et al., "RCAgent: Cloud Root Cause Analysis by Autonomous Agents with Tool-Augmented LLMs," CIKM 2024, pp. 4966–4974 | Solid |
 | `Oops25` | "When AIOps Become 'AI Oops': Subverting LLM-driven IT Operations via Telemetry Manipulation," 2025. arXiv:2508.06394 | Solid |
@@ -22,16 +22,15 @@ primary source**. Do not submit an unverified citation.
 | `Kirchhof25` | M. Kirchhof, G. Kasneci, E. Kasneci, "Position: Uncertainty Quantification Needs Reassessment for Large-language Model Agents," ICML 2025, PMLR 267. arXiv:2505.22655 | Read in full. Supports reasoning from the task rather than the aleatoric/epistemic labels (§2.3), and numeric thresholds for automated abstention (§4.3). Does **not** support any claim about a missing agentic UQ benchmark. |
 | `K8sGPT` | K8sGPT project documentation, https://k8sgpt.ai | Cite homepage |
 | `Holmes` | HolmesGPT project, https://github.com/robusta-dev/holmesgpt | Verify URL |
+| `Stratus25` | Y. Chen, J. Pan, J. Clark, Y. Su, N. Zheutlin, B. Bhavya, R. Arora, Y. Deng, S. Jha, T. Xu, "STRATUS: A Multi-agent System for Autonomous Reliability Engineering of Modern Clouds," 2025. arXiv:2506.02009 | Verified. Formalises Transactional No-Regression, a safety specification for safe exploration. |
+| `Meta26` | W. Sun, T. Wang, X. Tian, W. Lan, X. Feng, H. Li, F. Wang, "MetaKube: An Experience-Aware LLM Framework for Kubernetes Failure Diagnosis," Proc. ACM Web Conference (WWW) 2026. doi:10.1145/3774904.3792631, arXiv:2603.23580 | Verified. 15.3% EPMN improvement figure confirmed. arXiv preprint accessible; ACM version paywalled. |
 
 ## Found during drafting — MUST VERIFY
 
 | Key | Reference as recorded | What to check |
 |---|---|---|
-| `Oper26` | "OperAID: Benchmarking LLM Agents for Autonomous Kubernetes Fault Remediation," 2026 | Venue, authors, exact figures (10.9% → 61.1%, 900 experiments) |
-| `Meta26` | "MetaKube: An Experience-Aware LLM Framework for Kubernetes Failure Diagnosis," WWW 2026. doi:10.1145/3774904.3792631 | Authors; the 15.3% EPMN figure |
 | `Rec26` | "Can LLMs Really Recover Microservice Failures? A Recovery-Aware Evaluation of Diagnosis-to-Action Reasoning," arXiv:2607.04623 | Authors, venue |
 | `Xiang25` | Q. Wang / Xiang et al., "Simplifying Root Cause Analysis in Kubernetes with StateGraph and LLM (SynergyRCA)," 2025. arXiv:2506.02490 | Author order; the 0.90 precision figure |
-| `Chen26` | Y. Chen et al., "STRATUS: A Multi-Agent System for Autonomous Reliability Engineering of Modern Clouds," 2026. arXiv:2506.02009 | Year, venue |
 | `Li25` | Y. Li et al., "COCA: Generative Root Cause Analysis for Distributed Systems with Code Knowledge," 2025. arXiv:2503.23051 | Authors |
 | `Pei25` | C. Pei et al., "Flow-of-Action: SOP Enhanced LLM-Based Multi-Agent System for Root Cause Analysis," 2025. arXiv:2502.08224 | Authors |
 | `Jha25` | S. Jha et al., "ITBench: Evaluating AI Agents across Diverse Real-World IT Automation Tasks," ICML 2025 | Venue confirmation |
@@ -52,8 +51,7 @@ Prefer an academic source where one exists.
 
 ## Remaining actions
 
-1. **Read OperAID properly.** Closest work to this project; §5.6 makes claims
-   about how this study differs and they must be accurate.
-2. **Read AIOpsLab properly** for the same reason.
-3. Verify the ten entries in the MUST VERIFY table.
-4. Replace practitioner sources with academic equivalents where possible.
+1. **Read AIOpsLab in full.** §5.6 makes claims about how this study differs
+   from it and those claims must be accurate.
+2. Verify the seven entries in the MUST VERIFY table.
+3. Replace practitioner sources with academic equivalents where possible.

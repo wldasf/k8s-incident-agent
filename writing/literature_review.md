@@ -27,13 +27,11 @@ multi-agent system [Pei25].
 
 Two architectural themes recur. The first is tool use: the ReAct pattern of
 interleaved reasoning and action [Yao23] has become a de facto baseline, and
-OperAID reports that granting tool access raised average agent performance
-from 10.9% to 61.1%, with models unable to diagnose faults requiring live
-system observation when tools were withheld [Oper26]. The second is
-retrieval: supplying runbooks or historical resolutions at inference time
-[Lewis20] consistently improves grounding, and MetaKube extends this to
-memory of past incidents, reporting that experiential retrieval contributed a
-15.3% improvement [Meta26].
+agents denied access to diagnostic tools cannot resolve faults that require
+observing live system state. The second is retrieval: supplying runbooks or
+historical resolutions at inference time [Lewis20] consistently improves
+grounding, and MetaKube extends this to memory of past incidents, reporting
+that experiential retrieval contributed a 15.3% improvement [Meta26].
 
 Diagnosis, then, is not the open problem. The literature has converged on
 tool-augmented, retrieval-grounded agents and reports strong results.
@@ -46,14 +44,13 @@ where the picture becomes more complicated.
 AIOpsLab evaluates agents across the full incident lifecycle — detection,
 localisation, root cause analysis, and mitigation — on live Kubernetes
 deployments [Chen25]. Its results are instructive: agents that performed well
-on detection performed markedly worse on mitigation. OperAID goes further,
-implementing a closed-loop pipeline of fault injection, diagnosis,
-remediation, and execution-based verification on a live deployment, and
-reporting across 900 experiments that model size alone does not guarantee
-success even with tool access [Oper26]. STRATUS coordinates specialised
-agents across detection, diagnosis, and mitigation [Chen26]. A recovery-aware
-evaluation of diagnosis-to-action reasoning asks directly whether models can
-recover microservice failures rather than merely explain them [Rec26].
+on detection performed markedly worse on mitigation. STRATUS coordinates
+specialised agents across detection, diagnosis and mitigation, and formalises
+a safety specification termed Transactional No-Regression that constrains an
+agent's exploration so that iteration does not degrade the system it is
+repairing [Stratus25]. A recovery-aware evaluation of diagnosis-to-action
+reasoning asks directly whether models can recover microservice failures
+rather than merely explain them [Rec26].
 
 Two observations follow. First, this turn is very recent — the substantive
 remediation benchmarks date from 2025 and 2026, where diagnosis work extends
@@ -147,8 +144,7 @@ indicate the capability is present but not systematically evaluated.
 | MetaKube [Meta26] | yes | yes | yes | partial | no | yes | partial |
 | AIOpsLab [Chen25] | yes | yes | yes | partial | no | yes | yes |
 | ITBench [Jha25] | yes | yes | yes | partial | no | yes | yes |
-| STRATUS [Chen26] | yes | yes | yes | yes | no | partial | partial |
-| OperAID [Oper26] | yes | yes | yes | yes | no | yes | yes |
+| STRATUS [Stratus25] | yes | yes | yes | yes | partial (TNR) | partial | partial |
 | **This project** | — | yes | yes | yes | **yes** | yes | yes |
 
 Read column-wise, the pattern is unambiguous. Detection, localisation and
