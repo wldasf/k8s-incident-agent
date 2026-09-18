@@ -270,4 +270,39 @@ different question than the one I was asking.
 - E3 scores are bimodal (40 runs at 1.0), so its sweep plateaus above 0.75.
   Better calibrated but less useful as a threshold variable.
 
+## 2026-09-02
+
+Wrote up results and drafted the remaining chapters. No new decisions —
+analysis followed the plan set out before collection.
+
+## 2026-09-05
+
+Citation verification. Read four sources in full against the claims I'd built
+on them.
+
+- **The ICML position paper doesn't say what I claimed it said.** I had
+  "calls for a benchmark suite for agentic uncertainty... no such benchmark
+  exists in mature form" in three chapters, attributed to Kirchhof et al. via
+  a practitioner blog. The paper makes no such claim — that was the blog's
+  embellishment. What it does say is useful though: reason from the task
+  (abstention) rather than the aleatoric/epistemic labels, and numeric
+  thresholds are appropriate when the consumer is an automated system rather
+  than a human. That's a direct endorsement of the gate's design. Rewrote the
+  claim in abstract, introduction and lit review.
+- **Dropped OperAID.** Couldn't access it, and I'd quoted specific figures
+  (10.9% → 61.1%, 900 experiments) from a search snippet. Can't verify, can't
+  cite.
+- **STRATUS partially occupies my space.** It formalises Transactional
+  No-Regression, a safety specification for safe exploration. My comparison
+  table said safety evaluated: no — that's wrong. Changed to partial. The
+  distinction still holds: TNR governs whether iteration degrades the system,
+  mine governs whether an action is authorised at all. But I can't say safety
+  is unaddressed by everyone.
+- Verified Xiong24 (better than expected — it benchmarks exactly my two
+  metrics, calibration and failure prediction), Meas26 and MetaKube.
+
+Lesson: three of the four problems came from citing search snippets rather
+than papers. Same failure mode as the scenarios — plausible-looking material
+I hadn't checked.
+
 
