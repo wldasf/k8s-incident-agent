@@ -1,6 +1,5 @@
 # Critical Review
 
-*Draft — MSc final project. Verify every citation against the primary source before submission.*
 
 ## 2.1 Scope and structure
 
