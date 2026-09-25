@@ -89,8 +89,8 @@ The findings are bounded. They come from one model, one workload with a single
 replica per service, three repetitions per cell, and measurement taken at the
 frontend rather than per service. The claim that the agent rarely proposes
 destructive action is a property of this model's disposition and would not
-transfer without testing. Two scenarios produce no client-observable failure
-and are scored for diagnosis only, so nine of the ninety-nine runs contribute
+transfer without testing. One scenario produces no client-observable failure 
+and is scored for diagnosis only, so nine of the ninety-nine runs contribute 
 to accuracy but not to resolution.
 
 The study also does not show that agents are better or worse at incident

@@ -42,11 +42,12 @@ from values Terraform already holds rather than obtained by DHCP.
 
 ## 3.3 Fault benchmark
 
-Twelve scenarios span four fault classes, three per class: resource
-exhaustion, configuration drift, dependency failure, and application
-saturation. Classes are grounded in published empirical studies of
-microservice failure rather than assembled ad hoc; each scenario records the
-literature establishing its fault as a recognised class.
+Eleven scenarios span four fault classes: configuration drift, dependency failure 
+and application saturation with three each, and resource exhaustion with two. 
+A twelfth scenario was excluded after validation; §4.8 records the reason. 
+Classes are grounded in published empirical studies of microservice failure rather 
+than assembled ad hoc; each scenario records the literature establishing its 
+fault as a recognised class.
 
 Each scenario definition specifies:
 
@@ -76,6 +77,16 @@ dependency-failure faults are injected outside the application, where no
 available action resolves the incident. This is deliberate: an agent that
 localises such a fault and escalates should score well, and one that takes
 destructive action in pursuit of a fix should not.
+
+Two scenarios warrant separate treatment. One produces no client-observable 
+failure: an eight-second delay injected into a non-essential dependency leaves 
+frontend latency indistinguishable from baseline, because the application renders 
+without that dependency rather than waiting for it. The fault is real and 
+correctly injected, but there is nothing for a resolution check to observe. 
+It is therefore scored for diagnosis and excluded from resolution and outcome 
+statistics. A second scenario was excluded entirely: its stressor produced a 
+liveness-probe timeout rather than the node-level pressure intended, duplicating 
+another scenario's failure mode.
 
 ## 3.4 Agent
 
@@ -192,8 +203,14 @@ are therefore assessed independently:
 
 | | Action safe | Action unsafe |
 |---|---|---|
-| **Resolved** | Clean resolution | **Harmful success** |
+| **Resolved by an action** | Clean resolution | **Harmful success** |
 | **Unresolved** | Benign failure | Compound failure |
+
+A fifth category, self-recovered, records an incident that resolved while
+no action was executed. Conflating it with clean resolution would credit
+recovery to a system that did nothing, and would inflate resolution rates in
+proportion to how often a policy escalates — flattering the most cautious
+policies most.
 
 An action is unsafe if it is destructive where the reference fix was not, if
 it exceeds twice the reference fix's blast radius, or if it produces a
@@ -254,8 +271,11 @@ truth) and leniently (exact or accepted alternative); the difference
 measures how much apparent error is disagreement over labelling.
 Remediation is reported as resolution rate and mean time to resolution.
 Safety is reported as the four-way outcome distribution, with harmful
-successes reported separately. Operational cost is reported as tokens and
-wall-clock time per run.
+successes reported separately. Operational cost is reported as tokens 
+and wall-clock time per run. No baseline comparison against rule-based 
+automation or a human operator was collected; the policy conditions 
+are compared against one another, and the no-op condition establishes 
+which scenarios resolve without intervention.
 
 Calibration of each estimator is assessed by reliability diagram, expected
 calibration error, Brier score, and area under the ROC curve for action
@@ -266,13 +286,13 @@ arms.
 
 ## 3.11 Scope and design limitations
 
-The design is deliberately narrow. Twelve scenarios with three repetitions
-give small per-cell samples, so effect sizes are reported alongside
-significance and no strong claims are made from individual cells. A single
+The design is deliberately narrow. Eleven scenarios with three repetitions per 
+condition give small per-cell samples, so no claim rests on an individual cell; 
+class-level findings aggregate between six and twenty-seven observations A single
 workload is used, so results may not transfer to applications with
-different failure characteristics. The human baseline is self-administered
-by the author, who also designed the scenarios, and is therefore biased
-toward faster diagnosis than an unfamiliar operator would achieve. Frontend
+different failure characteristics. No human baseline was collected. 
+Escalation is recorded rather than acted upon, so the study measures how 
+often a human would be called, not what a human would do when called. Frontend
 probing gives no per-service latency attribution. Finally, the accepted
 alternatives were fixed before collection, but the decision of which labels
 to accept is a judgement that affects reported accuracy and is documented

@@ -88,14 +88,21 @@ answers above incorrect ones while being numerically wrong, or be numerically
 plausible while failing to separate them [Gal26].
 
 This is a load-bearing assumption with little support beneath it. Kirchhof et al.
-[Kirchhof25] argue that the traditional aleatoric–epistemic decomposition is unsuitable
-for interactive agents, and that the field should reason from the practical task — abstention
-among them — treating uncertainty estimators as tools rather than as labels. They further
+[Kirchhof25] argue that the traditional aleatoric–epistemic decomposition is
+unsuitable
+for interactive agents, and that the field should reason from the practical
+task — abstention
+among them — treating uncertainty estimators as tools rather than as labels.
+They further
 note that numerical uncertainty with a threshold remains appropriate where an agent's
-output is consumed by an automated system rather than a human, which is the configuration
-studied here. What neither that paper nor the wider literature supplies is empirical evidence
-about which estimator best serves that thresholding task in an operational setting. The mechanism
-on which safe autonomy depends has not been evaluated in the operational setting where it
+output is consumed by an automated system rather than a human, which is the
+configuration
+studied here. What neither that paper nor the wider literature supplies is
+empirical evidence
+about which estimator best serves that thresholding task in an operational
+setting. The mechanism
+on which safe autonomy depends has not been evaluated in the operational
+setting where it
 is used.
 
 Alternatives to self-report exist but are unevaluated in this domain.
@@ -148,9 +155,11 @@ indicate the capability is present but not systematically evaluated.
 
 Read column-wise, the pattern is unambiguous. Detection, localisation and
 root cause analysis are near-universally addressed. Mitigation is addressed
-by a recent minority. The *safety evaluated* column — whether the work
-measures the cost of incorrect or disproportionate action, rather than only
-the rate of successful action — is empty.
+by a recent minority. The *safety evaluated* column is near-empty. STRATUS is 
+the single partial exception, formalising a constraint on how safely an agent 
+may explore; no reviewed work measures the cost of applying a disproportionate 
+remediation, nor evaluates the confidence signal on which deployed systems 
+gate autonomous action.
 
 This is the demonstrated form of a claim frequently made in passing: the
 field has established that agents can understand faults, and has begun to

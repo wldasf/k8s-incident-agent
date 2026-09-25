@@ -138,10 +138,10 @@ implementation.
 ## 1.5 Structure
 
 Chapter 2 reviews the literature and locates the gap this study addresses,
-demonstrating through structured comparison that mitigation is addressed by a
-recent minority of work and safety evaluation by none of it. Chapter 3
-specifies the test environment, benchmark, agent, safety gate, confidence
-estimators and experimental procedure. Chapter 4 reports the results across
+demonstrating through structured comparison that mitigation is addressed by 
+a recent minority of work, and the cost of disproportionate action by none 
+of it. Chapter 3 specifies the test environment, benchmark, agent, safety gate, 
+confidence estimators and experimental procedure. Chapter 4 reports the results across
 ninety-nine runs and three policy conditions, including the excluded corpus.
 Chapter 5 interprets those results, relates them to prior work, and states the
 limitations bounding the claims. Chapter 6 concludes.
