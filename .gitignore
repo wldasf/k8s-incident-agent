@@ -17,5 +17,5 @@ __pycache__/
 venv/
 
 # Results — keep locally, publish deliberately
-results/
+results/invalid/
 *.log

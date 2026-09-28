@@ -142,7 +142,7 @@ def from_env() -> LLMClient:
     """Build a client from LLM_PROVIDER / LLM_MODEL, defaulting to Gemini Flash."""
     provider = os.environ.get("LLM_PROVIDER", "gemini")
     default_model = {
-        "gemini": "gemini-2.5-flash",
+        "gemini": "gemini-3.7-flash",
         "anthropic": "claude-haiku-4-5",
     }[provider]
     model = os.environ.get("LLM_MODEL", default_model)

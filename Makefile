@@ -1,7 +1,7 @@
 KUBECONFIG_PATH := $(PWD)/infra/terraform/kubeconfig.yaml
 export KUBECONFIG = $(KUBECONFIG_PATH)
 
-.PHONY: up observability workload verify all down cost test kubeconfig
+.PHONY: up observability workload verify all down cost kubeconfig
 
 ## Provision the Hetzner cluster (billing starts here)
 up:
@@ -30,8 +30,6 @@ cost:
 kubeconfig:
 	@echo "export KUBECONFIG=$(KUBECONFIG_PATH)"
 
-test:
-	@python3 -m pytest tests/ -q
 
 fixip:
 	@bash infra/scripts/allow-my-ip.sh
