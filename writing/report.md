@@ -78,8 +78,8 @@ fall. Three questions organise it:
 ## 1.3 Contribution
 
 The contribution is a measurement rather than a more capable agent. It
-comprises a benchmark of eleven fault scenarios, each validated to confirm its
-resolution check detects its own fault; a safety gate whose policy is a set of
+comprises a benchmark of eleven fault scenarios, each validated against a live
+cluster to check that its resolution check detects its own fault; a safety gate whose policy is a set of
 stated numeric thresholds, so that tightening it is a measurable change; two
 confidence estimators, one of them grounded in observable cluster state; and
 an outcome classification separating resolution from proportionality.
@@ -569,11 +569,11 @@ error rate. E3's curve was flat above 0.75.
 | FR2 | Yes | Structured decisions in 97 of 99 runs; two protocol failures recorded |
 | FR3 | Yes | Every gate decision recorded with the rule that produced it (Table 5.2) |
 | FR4 | Yes | 54 actions executed against the live cluster; resolution measured for each |
-| FR5 | Yes | All five outcome categories defined; four observed |
+| FR5 | Yes | All five outcome categories defined; three observed, with no harmful success or self-recovery in the final runs |
 | FR6 | Partly | Two estimators evaluated; the third implemented but not run, for cost |
 | NFR1 | Yes | No mutating tool reachable by the agent; the gate escalated on an unhandled error during development rather than executing |
 | NFR2 | Yes | Every reported run began and ended at a verified baseline; runs interrupted by a failed baseline were discarded and repeated |
-| NFR3 | Yes, after correction | Injector artefacts removed and verified absent under live injection; every scenario validated to detect its own fault |
+| NFR3 | Yes, after correction | Injector artefacts removed and verified absent under live injection; every scenario validated against its own fault, and the one whose fault is not client-visible scored for diagnosis only |
 | NFR4 | Yes | Infrastructure as code; versioned scenarios, policies and results |
 | NFR5 | Yes | Provider-independent client; model migrated mid-project without other changes |
 
