@@ -161,9 +161,10 @@ estimator best serves that task operationally.
 Mechanisms that restrict what an agent may do, by reversibility or blast
 radius, are rarely evaluated in published work. Three academic findings are relevant. Telemetry can be manipulated to
 induce AIOps agents to mishandle incidents [16], which matters for any
-confidence derived from observed state. Realised safety under human oversight
-peaks at an escalation rate below full escalation, so the threshold is a
-genuine optimisation rather than a matter of caution [17]. And measurement in
+confidence derived from observed state. Modelling a reviewer who fatigues as escalation load
+grows suggests that realised safety peaks at an escalation rate below full
+escalation, which would make the threshold a genuine optimisation rather
+than a matter of caution [17]. And measurement in
 this area is weak: Odmark et al. argue that claims about agentic Kubernetes
 operations are largely unfalsifiable for want of agent-disabled controls [18].
 Widely deployed tools such as K8sGPT [19] and HolmesGPT [20] stop at
@@ -630,8 +631,9 @@ limiting factor was the signal available to it.
 policy's resolutions while acting 20% less often, which is a genuine trade. The
 conservative policy achieved nothing: it resolved no incidents, prevented no
 harm because there was none to prevent, and escalated every incident to a human.
-Since realised safety under oversight peaks below full escalation [17], it is
-not a safe default but a transfer of risk to an overloaded reviewer.
+If realised safety peaks below full escalation, as modelling of a fatiguing
+reviewer suggests [17], it is not a safe default but a transfer of risk to an
+overloaded reviewer.
 
 **Tier restriction is insurance, not restraint.** Had the permissive condition
 been observed alone, zero destructive proposals would have suggested that the
@@ -763,7 +765,7 @@ separate findings about agents from findings about this environment.
 
 [11] W. Sun, T. Wang, X. Tian, W. Lan, X. Feng, H. Li, and F. Wang, "MetaKube: An experience-aware LLM framework for Kubernetes failure diagnosis," in *Proc. ACM Web Conf. (WWW)*, 2026, doi: 10.1145/3774904.3792631.
 
-[12] S. Jha *et al.*, "ITBench: Evaluating AI agents across diverse real-world IT automation tasks," in *Proc. Int. Conf. Machine Learning (ICML)*, 2025.
+[12] S. Jha, R. R. Arora, Y. Watanabe, T. Yanagawa, Y. Chen, J. Clark, B. Bhavya, M. Verma, H. Kumar, H. Kitahara, N. Zheutlin, S. Takano, D. Pathak, F. George, X. Wu, B. O. Turkkan, G. Vanloo, M. Nidd, T. Dai, O. Chatterjee, P. Gupta, S. Samanta, P. Aggarwal, R. Lee, P. Murali, J. Ahn, D. Kar, A. Rahane, C. Fonseca, A. Paradkar, Y. Deng, Z. Moscovich, R. Guan, A. Chandra, P. Halder, M. Nagar, H. R. Naik, P. Parthasarathy, R. Patra, G. Raj, S. Ramji, D. Zheng, and R. Puri, "ITBench: Evaluating AI agents across diverse real-world IT automation tasks," in *Proc. 42nd Int. Conf. Machine Learning (ICML)*, PMLR vol. 267, 2025.
 
 [13] Y. Chen, J. Pan, J. Clark, Y. Su, N. Zheutlin, B. Bhavya, R. Arora, Y. Deng, S. Jha, and T. Xu, "STRATUS: A multi-agent system for autonomous reliability engineering of modern clouds," arXiv:2506.02009, 2025.
 
@@ -771,9 +773,9 @@ separate findings about agents from findings about this environment.
 
 [15] X. Wang *et al.*, "Self-consistency improves chain of thought reasoning in language models," in *Proc. ICLR*, 2023.
 
-[16] "When AIOps become 'AI oops': Subverting LLM-driven IT operations via telemetry manipulation," arXiv:2508.06394, 2025.
+[16] D. Pasquini, E. M. Kornaropoulos, G. Ateniese, O. Akgul, A. Theocharis, and P. Efstathopoulos, "When AIOps become 'AI oops': Subverting LLM-driven IT operations via telemetry manipulation," arXiv:2508.06394, 2025.
 
-[17] "Oversight has a capacity: Calibrating agent guards to a subjective, fatiguing human," arXiv:2606.08919, 2026.
+[17] E. Turan, "Oversight has a capacity: Calibrating agent guards to a subjective, fatiguing human," arXiv:2606.08919, 2026.
 
 [18] J. Odmark, G. Rubin, and D. van der Vyver, "A measurement substrate for agentic Kubernetes operations: Methodology and a case study in retrieval-compounding falsification," arXiv:2605.23058, 2026.
 
