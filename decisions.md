@@ -305,4 +305,12 @@ Lesson: three of the four problems came from citing search snippets rather
 than papers. Same failure mode as the scenarios — plausible-looking material
 I hadn't checked.
 
+## 2026-10-03
+
+- Control plane became unusable after 44 days: k3s datastore grew to 10GB with
+  a 15GB WAL, load average 34 on 2 cores, API calls timing out. 100+ runs of
+  pod and ReplicaSet churn with no compaction. Rebuilt rather than repaired.
+  A long-running experimental cluster needs either periodic rebuilds or
+  datastore maintenance; I had assumed it would simply keep working.
+
 
