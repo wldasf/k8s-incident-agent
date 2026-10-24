@@ -9,6 +9,10 @@
 **/*.tfstate.*
 **/.terraform/
 
+# Terraform plan (Can contain sensitive values)
+**/tfplan
+
+
 # Python
 __pycache__/
 *.pyc
