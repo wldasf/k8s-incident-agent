@@ -15,6 +15,11 @@ kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
 echo "==> Deploying Online Boutique"
 kubectl apply -n "$NS" -f "$MANIFEST"
 
+# Online Boutique ships a LoadBalancer service. On EKS that creates a real AWS
+# load balancer outside Terraform's state, which blocks 'terraform destroy'.
+# Access is via port-forward, so remove it.
+kubectl delete service frontend-external -n "$NS" --ignore-not-found
+
 echo "==> Pinning application pods to the application tier"
 for d in $(kubectl get deploy -n "$NS" -o name); do
   kubectl patch -n "$NS" "$d" --type=strategic \
