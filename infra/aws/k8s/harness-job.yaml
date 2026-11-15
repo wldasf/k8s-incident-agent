@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: harness-run
+  namespace: harness
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 7200
+  ttlSecondsAfterFinished: 3600
+  template: 
+    spec:
+      serviceAccountName: harness
+      restartPolicy: Never
+      nodeSelector:
+        workload-tier: observability
+      containers:
+        - name: harness
+          image: ${HARNESS_IMAGE}
+          args: ["--scenario", "APP-01", "--policy", "balanced", "--smoke"]
+          env:
+            - name: LLM_SECRET_ID
+              value: "incident-agent/gemini-api-key"
+            - name: RESULTS_BUCKET
+              value: "k8s-incident-agent-results-c897c1b9"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
