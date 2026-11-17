@@ -31,7 +31,8 @@ subjects:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: harness-chaos---
+  name: harness-chaos
+---
 # What the harness and agent may do to the application under test.
 # Derived from the kubectl commands in harness/executor.py, harness/injector.py
 # and agent/cluster_view.py.
