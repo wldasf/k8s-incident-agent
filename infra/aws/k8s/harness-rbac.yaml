@@ -17,7 +17,7 @@ metadata:
 rules:
   - apiGroups: ["chaos-mesh.org"]
     resources: ["networkchaos"]
-    verbs: ["get", "create", "patch", "delete"]
+    verbs: ["get", "create", "patch", "delete", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
