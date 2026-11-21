@@ -24,7 +24,7 @@ access enabled for in-VPC traffic.
 |---------------|---------------|---------------------------------------------|
 | application   | 2 × t3.large  | Online Boutique                             |
 | observability | 1 × t3.large  | Prometheus, Grafana, Loki                   |
-| system        | 1 × t3.medium | Chaos Mesh controllers, CoreDNS, operators  |
+| system        | 1 × t3.large  | Chaos Mesh controllers, CoreDNS, operators  |
 
 Observability and system components run on separate node groups so that
 fault injection on the application tier cannot affect measurement or the

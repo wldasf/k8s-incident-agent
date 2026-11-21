@@ -80,6 +80,86 @@ If your public IP address changes, `make fixip` updates the firewall. Run
 `make down` to destroy the cluster when finished; servers are billed while they
 exist.
 
+## Running on AWS
+
+The test-bed also runs on Amazon EKS in eu-central-1 (Frankfurt). All
+infrastructure is defined in Terraform: a VPC with private subnets, an EKS
+cluster with three node groups, and the IAM roles the cluster and harness
+need. The harness runs inside the cluster as a Kubernetes Job, reads its
+API key from Secrets Manager and writes results to S3. One command builds
+the whole environment (`make aws-up`) and one destroys it (`make aws-down`).
+
+See [`docs/aws/design.md`](docs/aws/design.md) for the architecture.
+
+### Requirements
+
+- An AWS account, and an IAM user allowed to create the resources below
+- AWS CLI v2.32 or later (for `aws login`)
+- Terraform 1.10 or later
+- `kubectl` and Helm
+- Docker (to build the harness image)
+- `envsubst` (part of the `gettext` package) and `make`
+- A Google Gemini API key
+
+
+### First-time setup
+
+These steps are done once; their resources persist between sessions.
+
+1. **Bootstrap.** `terraform -chdir=infra/aws/bootstrap apply` creates the
+   Terraform state bucket, the results bucket, the ECR repository and an
+   empty Secrets Manager secret. The bucket names end in a random suffix:
+   copy it into `infra/aws/cluster/versions.tf` (state backend),
+   `infra/aws/cluster/harness.tf` (`results_bucket`) and
+   `infra/aws/k8s/harness-job.yaml` (`RESULTS_BUCKET`).
+2. **Store the API key** without it entering your shell history or
+   Terraform state:
+   ```bash
+   read -rs GEMINI_KEY
+   aws secretsmanager put-secret-value --secret-id incident-agent/gemini-api-key --secret-string "$GEMINI_KEY"
+   unset GEMINI_KEY
+   ```
+3. **Build and push the harness image:**
+   ```bash
+   ECR=$(terraform -chdir=infra/aws/bootstrap output -raw ecr_repository_url)
+   aws ecr get-login-password | docker login --username AWS --password-stdin "${ECR%%/*}"
+   docker build --platform linux/amd64 --provenance=false -f infra/aws/harness/Dockerfile -t "$ECR:v1" .
+   docker push "$ECR:v1"
+   ```
+
+### Each session
+
+```bash
+aws login
+make aws-up          # shows the Terraform plan and asks for confirmation; ~25 min
+```
+
+Run the harness. Edit `args` in `infra/aws/k8s/harness-job.yaml` to choose
+the scenario, policy and repeats.
+
+```bash
+export HARNESS_IMAGE="$(terraform -chdir=infra/aws/bootstrap output -raw ecr_repository_url):v1"
+envsubst < infra/aws/k8s/harness-job.yaml | kubectl apply -f -
+kubectl logs -n harness job/harness-run -f
+```
+
+To run again, delete the finished Job first:
+`kubectl delete job harness-run -n harness`.
+
+Results are uploaded to S3 when the run ends:
+
+```bash
+aws s3 ls s3://<results-bucket>/runs/ --recursive
+aws s3 cp s3://<results-bucket>/runs/<run-id>/<run-id>.jsonl - | python3 -m json.tool
+```
+
+Destroy everything at the end of every session. `make aws-down` also
+checks for billable leftovers.
+
+```bash
+make aws-down
+```
+
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
