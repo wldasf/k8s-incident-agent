@@ -160,6 +160,63 @@ checks for billable leftovers.
 make aws-down
 ```
 
+### Cost
+
+| Item | Approx. cost (eu-central-1) |
+|---|---|
+| EKS control plane | $0.10/hour |
+| 4 × t3.large nodes | ~$0.38/hour |
+| NAT Gateway + Elastic IP | ~$0.06/hour |
+| **Running total** | **~$0.54/hour (~$1.60 per 3-hour session)** |
+| Left running 24/7 | ~$395/month |
+| Persistent (state, results, ECR, secret) | under $1/month |
+
+The cluster is destroyed after every session, and `make aws-down` checks for
+billable leftovers (NAT Gateways, Elastic IPs, clusters, instances, load
+balancers).
+
+### Design decisions
+
+- **Private worker nodes, one NAT Gateway.** Nodes have no public IPs. A
+  single NAT Gateway keeps cost down, at the price of a single-AZ egress path.
+- **Three node groups.** Application, observability and system tiers, so
+  fault injection on the application tier cannot take down measurement or
+  the chaos tooling.
+- **Remote Terraform state.** State lives in a versioned S3 bucket with
+  native locking; persistent resources sit in a separate `bootstrap`
+  configuration that is never destroyed.
+- **No static credentials.** The operator uses short-lived `aws login`
+  sessions, and the harness pod gets AWS access through EKS Pod Identity.
+  The API key lives in Secrets Manager and never enters Terraform state.
+- **Least-privilege RBAC.** The harness service account can create chaos
+  experiments only against the application namespace, derived from the
+  kubectl commands the harness actually runs.
+- **Pinned versions.** Kubernetes, the Online Boutique release, kubectl in
+  the image, and an immutable ECR tag, for reproducible runs.
+
+### Problems solved during the migration
+
+- **`terraform destroy` hung for 20 minutes.** Online Boutique's LoadBalancer
+  Service made Kubernetes create an AWS load balancer outside Terraform's
+  state, which blocked deleting the public subnets. Fixed by deleting the
+  load balancer, and removing that Service at deploy time (access is via
+  port-forward).
+- **Fault injection was rejected despite correct RBAC.** Chaos Mesh's
+  admission webhook checks chaos permissions in the *target* namespace as
+  well as where the object is created. Fixed by granting chaos permissions
+  in the application namespace.
+- **Teardown timed out after moving a permission to the right Role.**
+  `kubectl delete` waits by watching the object, and the narrower Role
+  lacked `watch`; a broader ClusterRole had been hiding the gap. Fixed by
+  adding `list` and `watch`.
+- **Drift from a manual console fix.** A route table association repaired in
+  the console left Terraform state pointing at a deleted resource. Detected
+  with `terraform plan`, reconciled with `terraform state rm` and
+  `terraform import`.
+- **Three images per push.** Docker's default provenance attestation pushed
+  an image index plus two manifests, which breaks ECR scanning and miscounts
+  lifecycle rules. Fixed by building with `--provenance=false`.
+
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
