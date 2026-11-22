@@ -68,6 +68,18 @@ runcmd:
       exit 1
     fi
   - |
+    for i in $(seq 1 30); do
+      if getent hosts get.k3s.io >/dev/null 2>&1; then
+        echo "$(date -Is) DNS is ready" >> /var/log/k3s-iface.log
+        break
+      fi
+      sleep 2
+    done
+    if ! getent hosts get.k3s.io >/dev/null 2>&1; then
+      echo "$(date -Is) FATAL: DNS lookup for get.k3s.io failed after 60s" >> /var/log/k3s-iface.log
+      exit 1
+    fi
+  - |
     IFACE=$(ip -o -4 addr show | awk '$4 ~ /^10\.10\./ {print $2; exit}')
     echo "$(date -Is) using interface: $IFACE" >> /var/log/k3s-iface.log
     curl -sfL https://get.k3s.io | \
@@ -81,6 +93,17 @@ runcmd:
         --disable servicelb \
         --write-kubeconfig-mode 644 \
         --tls-san $(curl -s -4 ifconfig.me)
-  - until kubectl get nodes >/dev/null 2>&1; do sleep 5; done
+  - |
+    for i in $(seq 1 60); do
+      if kubectl get nodes >/dev/null 2>&1; then
+        echo "$(date -Is) cluster API is answering" >> /var/log/k3s-iface.log
+        break
+      fi
+      sleep 5
+    done
+    if ! kubectl get nodes >/dev/null 2>&1; then
+      echo "$(date -Is) FATAL: k3s API did not answer after 5 minutes" >> /var/log/k3s-iface.log
+      exit 1
+    fi  
   - kubectl label node $(hostname) workload-tier=control --overwrite
   - touch /var/lib/k3s-ready
