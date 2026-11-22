@@ -30,6 +30,8 @@ harness/      experiment runner, fault injection, outcome scoring, analysis
 scenarios/    fault definitions with ground truth
   excluded/   scenarios removed after validation, kept for the record
 infra/        Terraform for the Hetzner cluster, and setup scripts
+  aws/        Terraform, scripts, Kubernetes manifests and image for AWS
+docs/aws/     AWS design and architecture diagram
 results/      the three result files the report is based on
 writing/      the final report
 decisions.md  dated log of design decisions and corrections
@@ -106,7 +108,8 @@ See [`docs/aws/design.md`](docs/aws/design.md) for the architecture.
 
 These steps are done once; their resources persist between sessions.
 
-1. **Bootstrap.** `terraform -chdir=infra/aws/bootstrap apply` creates the
+1. **Bootstrap.** `terraform -chdir=infra/aws/bootstrap init` then 
+   `terraform -chdir=infra/aws/bootstrap apply` creates the
    Terraform state bucket, the results bucket, the ECR repository and an
    empty Secrets Manager secret. The bucket names end in a random suffix:
    copy it into `infra/aws/cluster/versions.tf` (state backend),
@@ -216,6 +219,11 @@ balancers).
 - **Three images per push.** Docker's default provenance attestation pushed
   an image index plus two manifests, which breaks ECR scanning and miscounts
   lifecycle rules. Fixed by building with `--provenance=false`.
+- **The Hetzner build hung at boot.** For a few seconds after `netplan apply`,
+  DNS was unavailable, so the k3s download failed silently and cloud-init
+  waited for the cluster API forever. Found by reproducing the sequence by
+  hand; fixed by waiting for DNS before installing and time-limiting the
+  API wait. 
 
 ## Licence
 
