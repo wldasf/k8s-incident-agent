@@ -47,7 +47,7 @@ rules:
     resources: ["pods"]
     verbs: ["get", "list", "watch", "delete"]
   - apiGroups: [""]
-    resources: ["pods/log", "events", "services", "endpoints"]
+    resources: ["pods/log", "events"]
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["persistentvolumeclaims"]
@@ -65,7 +65,7 @@ rules:
   # Chaos Mesh's admission webhook also requires chaos permissions in the
   # namespace an experiment targets, not only where the object lives.
   - apiGroups: ["chaos-mesh.org"]
-    resources: ["*"]
+    resources: ["networkchaos"]
     verbs: ["get", "list", "watch", "create", "patch", "update", "delete"]
 
 ---
@@ -94,7 +94,8 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list", "watch", "patch"]
-  # Drain: find every pod on the node, then evict it.
+  # Drain: find every pod on the node, then evict it. The cluster-wide
+  # get/list is also used by 'kubectl get pods -A' in agent/cluster_view.py.
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]
