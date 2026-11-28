@@ -10,6 +10,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Install terraform
-        uses: hashicorp/set-terraform@v4.0.0
+        uses: hashicorp/setup-terraform@v4.0.0
         with:
           terraform_version: v1.17.2
