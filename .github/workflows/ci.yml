@@ -17,7 +17,7 @@ jobs:
         run: terraform fmt -check -recursive infra/aws
       - name: Bootstrap Init and Validate
         run: | 
-          terraform -chdir=infra/aws/bootstrap init 
+          terraform -chdir=infra/aws/bootstrap init -backend=false
           terraform -chdir=infra/aws/bootstrap validate
       - name: Cluster Init and Validate  
         run: |
