@@ -13,6 +13,9 @@ jobs:
         uses: hashicorp/setup-terraform@v4.0.0
         with:
           terraform_version: v1.17.2
-      - name: fmt
+      - name: Terraform Format
+        run: terraform fmt -check -recursive infra/aws; echo "exit code: $?"
+      - name: Bootstrap Init and Validate
         run: terraform -chdir=infra/aws/bootstrap init -backend=false | terraform -chdir=infra/aws/bootstrap validate
+      - name: Cluster Init and Validate  
         run: terraform -chdir=infra/aws/cluster init -backend=false | terraform -chdir=infra/aws/cluster validate
